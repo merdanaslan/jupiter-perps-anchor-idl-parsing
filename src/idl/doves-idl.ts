@@ -1,389 +1,757 @@
 export type Doves = {
-  version: "0.1.0";
-  name: "doves";
-  instructions: [
+  "version": "0.1.0",
+  "name": "doves",
+  "instructions": [
     {
-      name: "initialize";
-      accounts: [
+      "name": "initialize",
+      "accounts": [
         {
-          name: "admin";
-          isMut: true;
-          isSigner: true;
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "feed";
-          isMut: true;
-          isSigner: false;
+          "name": "feed",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "systemProgram";
-          isMut: false;
-          isSigner: false;
-        },
-      ];
-      args: [
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
         {
-          name: "pair";
-          type: {
-            array: ["u8", 32];
-          };
-        },
-        {
-          name: "feedSigner";
-          type: {
-            array: ["u8", 33];
-          };
-        },
-      ];
-    },
-    {
-      name: "update";
-      accounts: [
-        {
-          name: "feed";
-          isMut: true;
-          isSigner: false;
+          "name": "pair",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
-          name: "systemProgram";
-          isMut: false;
-          isSigner: false;
-        },
-      ];
-      args: [
+          "name": "feedSigner",
+          "type": {
+            "array": [
+              "u8",
+              33
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateWithSigner",
+      "accounts": [
         {
-          name: "update";
-          type: {
-            defined: "UpdateMessage";
-          };
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
         },
         {
-          name: "raise";
-          type: "bool";
+          "name": "feed",
+          "isMut": true,
+          "isSigner": false
         },
-      ];
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "update",
+          "type": {
+            "defined": "UpdateMessage"
+          }
+        },
+        {
+          "name": "raise",
+          "type": "bool"
+        }
+      ]
     },
-  ];
-  accounts: [
     {
-      name: "priceFeed";
-      type: {
-        kind: "struct";
-        fields: [
+      "name": "initializeAgPrice",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "agPriceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "edgeFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "config",
+          "type": {
+            "defined": "Config"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateAgPriceFeed",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "agPriceFeed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "edgeFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythFeed",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agPriceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "pair";
-            type: {
-              array: ["u8", 32];
-            };
+            "name": "mint",
+            "type": "publicKey"
           },
           {
-            name: "signer";
-            type: {
-              array: ["u8", 33];
-            };
+            "name": "edgeFeed",
+            "type": "publicKey"
           },
           {
-            name: "price";
-            type: "u64";
+            "name": "clFeed",
+            "type": "publicKey"
           },
           {
-            name: "expo";
-            type: "i8";
+            "name": "pythFeed",
+            "type": "publicKey"
           },
           {
-            name: "timestamp";
-            type: "i64";
+            "name": "pythFeedId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
-            name: "bump";
-            type: "u8";
-          },
-        ];
-      };
-    },
-  ];
-  types: [
-    {
-      name: "UpdateMessage";
-      type: {
-        kind: "struct";
-        fields: [
-          {
-            name: "recoveryId";
-            type: "u8";
+            "name": "price",
+            "type": "u64"
           },
           {
-            name: "signature";
-            type: {
-              array: ["u8", 64];
-            };
+            "name": "expo",
+            "type": "i8"
           },
           {
-            name: "price";
-            type: "u64";
+            "name": "timestamp",
+            "type": "i64"
           },
           {
-            name: "expo";
-            type: "i8";
+            "name": "config",
+            "type": {
+              "defined": "Config"
+            }
           },
           {
-            name: "timestamp";
-            type: "i64";
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "priceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pair",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
-        ];
-      };
-    },
-  ];
-  errors: [
+          {
+            "name": "signer",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "expo",
+            "type": "i8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
     {
-      code: 6000;
-      name: "ThresholdUnderflow";
-      msg: "Threshold must be >0";
-    },
-    {
-      code: 6001;
-      name: "ThresholdOverflow";
-      msg: "Threshold must be <= whitelist length";
-    },
-    {
-      code: 6002;
-      name: "ThresholdNotMet";
-      msg: "Number of signers must be >= threshold";
-    },
-    {
-      code: 6003;
-      name: "PairStringUnderflow";
-      msg: "Pair string must not be blank";
-    },
-    {
-      code: 6004;
-      name: "PairStringOverflow";
-      msg: "Pair string must be <= 32 bytes";
-    },
-    {
-      code: 6005;
-      name: "SignerIndexOverflow";
-      msg: "Signer out of range";
-    },
-    {
-      code: 6006;
-      name: "InvalidSigner";
-      msg: "Signature verification failed";
-    },
-    {
-      code: 6007;
-      name: "DuplicateSigner";
-      msg: "All signers must be unique";
-    },
-    {
-      code: 6008;
-      name: "InvalidTimestamp";
-      msg: "New timestamp must be greater than previous one";
-    },
-    {
-      code: 6009;
-      name: "Overflow";
-      msg: "Integer overflow";
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maxAgPriceAgeSec",
+            "type": "u32"
+          },
+          {
+            "name": "maxPriceFeedAgeSec",
+            "type": "u32"
+          },
+          {
+            "name": "maxPriceDiffBps",
+            "type": "u64"
+          }
+        ]
+      }
     },
     {
-      code: 6010;
-      name: "Underflow";
-      msg: "Integer underflow";
+      "name": "UpdateMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recoveryId",
+            "type": "u8"
+          },
+          {
+            "name": "signature",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "expo",
+            "type": "i8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ThresholdUnderflow",
+      "msg": "Threshold must be >0"
     },
-  ];
+    {
+      "code": 6001,
+      "name": "ThresholdOverflow",
+      "msg": "Threshold must be <= whitelist length"
+    },
+    {
+      "code": 6002,
+      "name": "ThresholdNotMet",
+      "msg": "Number of signers must be >= threshold"
+    },
+    {
+      "code": 6003,
+      "name": "PairStringUnderflow",
+      "msg": "Pair string must not be blank"
+    },
+    {
+      "code": 6004,
+      "name": "PairStringOverflow",
+      "msg": "Pair string must be <= 32 bytes"
+    },
+    {
+      "code": 6005,
+      "name": "SignerIndexOverflow",
+      "msg": "Signer out of range"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidSigner",
+      "msg": "Signature verification failed"
+    },
+    {
+      "code": 6007,
+      "name": "DuplicateSigner",
+      "msg": "All signers must be unique"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidTimestamp",
+      "msg": "New timestamp must be greater than previous one"
+    },
+    {
+      "code": 6009,
+      "name": "Overflow",
+      "msg": "Integer overflow"
+    },
+    {
+      "code": 6010,
+      "name": "Underflow",
+      "msg": "Integer underflow"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidPriceFeed",
+      "msg": "Invalid price feed"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidExpo",
+      "msg": "Invalid expo"
+    }
+  ]
 };
 
 export const IDL: Doves = {
-  version: "0.1.0",
-  name: "doves",
-  instructions: [
+  "version": "0.1.0",
+  "name": "doves",
+  "instructions": [
     {
-      name: "initialize",
-      accounts: [
+      "name": "initialize",
+      "accounts": [
         {
-          name: "admin",
-          isMut: true,
-          isSigner: true,
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "feed",
-          isMut: true,
-          isSigner: false,
+          "name": "feed",
+          "isMut": true,
+          "isSigner": false
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false,
-        },
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
       ],
-      args: [
+      "args": [
         {
-          name: "pair",
-          type: {
-            array: ["u8", 32],
-          },
+          "name": "pair",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
-          name: "feedSigner",
-          type: {
-            array: ["u8", 33],
-          },
+          "name": "feedSigner",
+          "type": {
+            "array": [
+              "u8",
+              33
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateWithSigner",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
         },
+        {
+          "name": "feed",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
       ],
+      "args": [
+        {
+          "name": "update",
+          "type": {
+            "defined": "UpdateMessage"
+          }
+        },
+        {
+          "name": "raise",
+          "type": "bool"
+        }
+      ]
     },
     {
-      name: "update",
-      accounts: [
+      "name": "initializeAgPrice",
+      "accounts": [
         {
-          name: "feed",
-          isMut: true,
-          isSigner: false,
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
         },
         {
-          name: "systemProgram",
-          isMut: false,
-          isSigner: false,
+          "name": "agPriceFeed",
+          "isMut": true,
+          "isSigner": false
         },
+        {
+          "name": "mint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "edgeFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
       ],
-      args: [
+      "args": [
         {
-          name: "update",
-          type: {
-            defined: "UpdateMessage",
-          },
+          "name": "config",
+          "type": {
+            "defined": "Config"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateAgPriceFeed",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
         },
         {
-          name: "raise",
-          type: "bool",
+          "name": "agPriceFeed",
+          "isMut": true,
+          "isSigner": false
         },
+        {
+          "name": "edgeFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "clFeed",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pythFeed",
+          "isMut": false,
+          "isSigner": false
+        }
       ],
-    },
+      "args": []
+    }
   ],
-  accounts: [
+  "accounts": [
     {
-      name: "priceFeed",
-      type: {
-        kind: "struct",
-        fields: [
+      "name": "agPriceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "pair",
-            type: {
-              array: ["u8", 32],
-            },
+            "name": "mint",
+            "type": "publicKey"
           },
           {
-            name: "signer",
-            type: {
-              array: ["u8", 33],
-            },
+            "name": "edgeFeed",
+            "type": "publicKey"
           },
           {
-            name: "price",
-            type: "u64",
+            "name": "clFeed",
+            "type": "publicKey"
           },
           {
-            name: "expo",
-            type: "i8",
+            "name": "pythFeed",
+            "type": "publicKey"
           },
           {
-            name: "timestamp",
-            type: "i64",
+            "name": "pythFeedId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
-            name: "bump",
-            type: "u8",
+            "name": "price",
+            "type": "u64"
           },
-        ],
-      },
+          {
+            "name": "expo",
+            "type": "i8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "config",
+            "type": {
+              "defined": "Config"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
     },
+    {
+      "name": "priceFeed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pair",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "signer",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "expo",
+            "type": "i8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
   ],
-  types: [
+  "types": [
     {
-      name: "UpdateMessage",
-      type: {
-        kind: "struct",
-        fields: [
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "recoveryId",
-            type: "u8",
+            "name": "maxAgPriceAgeSec",
+            "type": "u32"
           },
           {
-            name: "signature",
-            type: {
-              array: ["u8", 64],
-            },
+            "name": "maxPriceFeedAgeSec",
+            "type": "u32"
           },
           {
-            name: "price",
-            type: "u64",
-          },
-          {
-            name: "expo",
-            type: "i8",
-          },
-          {
-            name: "timestamp",
-            type: "i64",
-          },
-        ],
-      },
+            "name": "maxPriceDiffBps",
+            "type": "u64"
+          }
+        ]
+      }
     },
+    {
+      "name": "UpdateMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recoveryId",
+            "type": "u8"
+          },
+          {
+            "name": "signature",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "expo",
+            "type": "i8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
   ],
-  errors: [
+  "errors": [
     {
-      code: 6000,
-      name: "ThresholdUnderflow",
-      msg: "Threshold must be >0",
+      "code": 6000,
+      "name": "ThresholdUnderflow",
+      "msg": "Threshold must be >0"
     },
     {
-      code: 6001,
-      name: "ThresholdOverflow",
-      msg: "Threshold must be <= whitelist length",
+      "code": 6001,
+      "name": "ThresholdOverflow",
+      "msg": "Threshold must be <= whitelist length"
     },
     {
-      code: 6002,
-      name: "ThresholdNotMet",
-      msg: "Number of signers must be >= threshold",
+      "code": 6002,
+      "name": "ThresholdNotMet",
+      "msg": "Number of signers must be >= threshold"
     },
     {
-      code: 6003,
-      name: "PairStringUnderflow",
-      msg: "Pair string must not be blank",
+      "code": 6003,
+      "name": "PairStringUnderflow",
+      "msg": "Pair string must not be blank"
     },
     {
-      code: 6004,
-      name: "PairStringOverflow",
-      msg: "Pair string must be <= 32 bytes",
+      "code": 6004,
+      "name": "PairStringOverflow",
+      "msg": "Pair string must be <= 32 bytes"
     },
     {
-      code: 6005,
-      name: "SignerIndexOverflow",
-      msg: "Signer out of range",
+      "code": 6005,
+      "name": "SignerIndexOverflow",
+      "msg": "Signer out of range"
     },
     {
-      code: 6006,
-      name: "InvalidSigner",
-      msg: "Signature verification failed",
+      "code": 6006,
+      "name": "InvalidSigner",
+      "msg": "Signature verification failed"
     },
     {
-      code: 6007,
-      name: "DuplicateSigner",
-      msg: "All signers must be unique",
+      "code": 6007,
+      "name": "DuplicateSigner",
+      "msg": "All signers must be unique"
     },
     {
-      code: 6008,
-      name: "InvalidTimestamp",
-      msg: "New timestamp must be greater than previous one",
+      "code": 6008,
+      "name": "InvalidTimestamp",
+      "msg": "New timestamp must be greater than previous one"
     },
     {
-      code: 6009,
-      name: "Overflow",
-      msg: "Integer overflow",
+      "code": 6009,
+      "name": "Overflow",
+      "msg": "Integer overflow"
     },
     {
-      code: 6010,
-      name: "Underflow",
-      msg: "Integer underflow",
+      "code": 6010,
+      "name": "Underflow",
+      "msg": "Integer underflow"
     },
-  ],
+    {
+      "code": 6011,
+      "name": "InvalidPriceFeed",
+      "msg": "Invalid price feed"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidExpo",
+      "msg": "Invalid expo"
+    }
+  ]
 };

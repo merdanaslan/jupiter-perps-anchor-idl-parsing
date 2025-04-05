@@ -200,29 +200,6 @@ export type Perpetuals = {
       ]
     },
     {
-      "name": "setCustodyGlobalLimit",
-      "accounts": [
-        {
-          "name": "keeper",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "params",
-          "type": {
-            "defined": "SetCustodyGlobalLimitParams"
-          }
-        }
-      ]
-    },
-    {
       "name": "setPoolConfig",
       "accounts": [
         {
@@ -442,6 +419,104 @@ export type Perpetuals = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "reallocCustody",
+      "accounts": [
+        {
+          "name": "keeper",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "custody",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reallocPool",
+      "accounts": [
+        {
+          "name": "keeper",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "operatorSetCustodyConfig",
+      "accounts": [
+        {
+          "name": "operator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "custody",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": "OperatorSetCustodyConfigParams"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operatorSetPoolConfig",
+      "accounts": [
+        {
+          "name": "operator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": "OperatorSetPoolConfigParams"
+          }
+        }
+      ]
     },
     {
       "name": "testInit",
@@ -2613,6 +2688,22 @@ export type Perpetuals = {
           {
             "name": "dovesOracle",
             "type": "publicKey"
+          },
+          {
+            "name": "jumpRateState",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
+          },
+          {
+            "name": "priceImpactBuffer",
+            "type": {
+              "defined": "PriceImpactBuffer"
+            }
           }
         ]
       }
@@ -2959,6 +3050,32 @@ export type Perpetuals = {
           {
             "name": "maxPositionSizeUsd",
             "type": "u64"
+          },
+          {
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
           }
         ]
       }
@@ -3463,6 +3580,86 @@ export type Perpetuals = {
       }
     },
     {
+      "name": "OperatorSetCustodyConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pricing",
+            "type": {
+              "defined": "PricingParams"
+            }
+          },
+          {
+            "name": "hourlyFundingDbps",
+            "type": "u64"
+          },
+          {
+            "name": "targetRatioBps",
+            "type": "u64"
+          },
+          {
+            "name": "increasePositionBps",
+            "type": "u64"
+          },
+          {
+            "name": "decreasePositionBps",
+            "type": "u64"
+          },
+          {
+            "name": "maxPositionSizeUsd",
+            "type": "u64"
+          },
+          {
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OperatorSetPoolConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fees",
+            "type": {
+              "defined": "Fees"
+            }
+          },
+          {
+            "name": "limit",
+            "type": {
+              "defined": "Limit"
+            }
+          },
+          {
+            "name": "maxRequestExecutionSec",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "RefreshAssetsUnderManagementParams",
       "type": {
         "kind": "struct",
@@ -3531,22 +3728,32 @@ export type Perpetuals = {
           {
             "name": "maxPositionSizeUsd",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "SetCustodyGlobalLimitParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
+          },
           {
-            "name": "maxGlobalLongSizes",
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
             "type": "u64"
           },
           {
-            "name": "maxGlobalShortSizes",
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
             "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
           }
         ]
       }
@@ -3684,6 +3891,43 @@ export type Perpetuals = {
       }
     },
     {
+      "name": "PriceImpactBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "openInterest",
+            "type": {
+              "array": [
+                "i64",
+                60
+              ]
+            }
+          },
+          {
+            "name": "lastUpdated",
+            "type": "i64"
+          },
+          {
+            "name": "feeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "exponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Assets",
       "type": {
         "kind": "struct",
@@ -3762,6 +4006,30 @@ export type Perpetuals = {
           },
           {
             "name": "hourlyFundingDbps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JumpRateState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "minRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "maxRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "targetRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "targetUtilizationRate",
             "type": "u64"
           }
         ]
@@ -3871,11 +4139,11 @@ export type Perpetuals = {
         "kind": "struct",
         "fields": [
           {
-            "name": "buffer",
+            "name": "swapMultiplier",
             "type": "u64"
           },
           {
-            "name": "buffer1",
+            "name": "stableSwapMultiplier",
             "type": "u64"
           },
           {
@@ -3950,6 +4218,20 @@ export type Perpetuals = {
       }
     },
     {
+      "name": "PriceImpactMechanism",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TradeSize"
+          },
+          {
+            "name": "DeltaImbalance"
+          }
+        ]
+      }
+    },
+    {
       "name": "OracleType",
       "type": {
         "kind": "enum",
@@ -3993,6 +4275,20 @@ export type Perpetuals = {
           },
           {
             "name": "Loose"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradePoolType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Increase"
+          },
+          {
+            "name": "Decrease"
           }
         ]
       }
@@ -5675,29 +5971,6 @@ export const IDL: Perpetuals = {
       ]
     },
     {
-      "name": "setCustodyGlobalLimit",
-      "accounts": [
-        {
-          "name": "keeper",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "params",
-          "type": {
-            "defined": "SetCustodyGlobalLimitParams"
-          }
-        }
-      ]
-    },
-    {
       "name": "setPoolConfig",
       "accounts": [
         {
@@ -5917,6 +6190,104 @@ export const IDL: Perpetuals = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "reallocCustody",
+      "accounts": [
+        {
+          "name": "keeper",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "custody",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reallocPool",
+      "accounts": [
+        {
+          "name": "keeper",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "operatorSetCustodyConfig",
+      "accounts": [
+        {
+          "name": "operator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "custody",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": "OperatorSetCustodyConfigParams"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operatorSetPoolConfig",
+      "accounts": [
+        {
+          "name": "operator",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": "OperatorSetPoolConfigParams"
+          }
+        }
+      ]
     },
     {
       "name": "testInit",
@@ -8088,6 +8459,22 @@ export const IDL: Perpetuals = {
           {
             "name": "dovesOracle",
             "type": "publicKey"
+          },
+          {
+            "name": "jumpRateState",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
+          },
+          {
+            "name": "priceImpactBuffer",
+            "type": {
+              "defined": "PriceImpactBuffer"
+            }
           }
         ]
       }
@@ -8434,6 +8821,32 @@ export const IDL: Perpetuals = {
           {
             "name": "maxPositionSizeUsd",
             "type": "u64"
+          },
+          {
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
           }
         ]
       }
@@ -8938,6 +9351,86 @@ export const IDL: Perpetuals = {
       }
     },
     {
+      "name": "OperatorSetCustodyConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pricing",
+            "type": {
+              "defined": "PricingParams"
+            }
+          },
+          {
+            "name": "hourlyFundingDbps",
+            "type": "u64"
+          },
+          {
+            "name": "targetRatioBps",
+            "type": "u64"
+          },
+          {
+            "name": "increasePositionBps",
+            "type": "u64"
+          },
+          {
+            "name": "decreasePositionBps",
+            "type": "u64"
+          },
+          {
+            "name": "maxPositionSizeUsd",
+            "type": "u64"
+          },
+          {
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OperatorSetPoolConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "fees",
+            "type": {
+              "defined": "Fees"
+            }
+          },
+          {
+            "name": "limit",
+            "type": {
+              "defined": "Limit"
+            }
+          },
+          {
+            "name": "maxRequestExecutionSec",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
       "name": "RefreshAssetsUnderManagementParams",
       "type": {
         "kind": "struct",
@@ -9006,22 +9499,32 @@ export const IDL: Perpetuals = {
           {
             "name": "maxPositionSizeUsd",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "SetCustodyGlobalLimitParams",
-      "type": {
-        "kind": "struct",
-        "fields": [
+          },
           {
-            "name": "maxGlobalLongSizes",
+            "name": "jumpRate",
+            "type": {
+              "defined": "JumpRateState"
+            }
+          },
+          {
+            "name": "priceImpactFeeFactor",
             "type": "u64"
           },
           {
-            "name": "maxGlobalShortSizes",
+            "name": "priceImpactExponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
             "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          },
+          {
+            "name": "dovesAgOracle",
+            "type": "publicKey"
           }
         ]
       }
@@ -9159,6 +9662,43 @@ export const IDL: Perpetuals = {
       }
     },
     {
+      "name": "PriceImpactBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "openInterest",
+            "type": {
+              "array": [
+                "i64",
+                60
+              ]
+            }
+          },
+          {
+            "name": "lastUpdated",
+            "type": "i64"
+          },
+          {
+            "name": "feeFactor",
+            "type": "u64"
+          },
+          {
+            "name": "exponent",
+            "type": "f32"
+          },
+          {
+            "name": "deltaImbalanceThresholdDecimal",
+            "type": "u64"
+          },
+          {
+            "name": "maxFeeBps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Assets",
       "type": {
         "kind": "struct",
@@ -9237,6 +9777,30 @@ export const IDL: Perpetuals = {
           },
           {
             "name": "hourlyFundingDbps",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JumpRateState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "minRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "maxRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "targetRateBps",
+            "type": "u64"
+          },
+          {
+            "name": "targetUtilizationRate",
             "type": "u64"
           }
         ]
@@ -9346,11 +9910,11 @@ export const IDL: Perpetuals = {
         "kind": "struct",
         "fields": [
           {
-            "name": "buffer",
+            "name": "swapMultiplier",
             "type": "u64"
           },
           {
-            "name": "buffer1",
+            "name": "stableSwapMultiplier",
             "type": "u64"
           },
           {
@@ -9425,6 +9989,20 @@ export const IDL: Perpetuals = {
       }
     },
     {
+      "name": "PriceImpactMechanism",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TradeSize"
+          },
+          {
+            "name": "DeltaImbalance"
+          }
+        ]
+      }
+    },
+    {
       "name": "OracleType",
       "type": {
         "kind": "enum",
@@ -9468,6 +10046,20 @@ export const IDL: Perpetuals = {
           },
           {
             "name": "Loose"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradePoolType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Increase"
+          },
+          {
+            "name": "Decrease"
           }
         ]
       }
