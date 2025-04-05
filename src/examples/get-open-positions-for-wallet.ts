@@ -40,17 +40,18 @@ export async function getOpenPositionsForWallet(walletAddress: string) {
     // Old positions accounts are not closed, but have `sizeUsd = 0`
     // i.e. open positions have a non-zero `sizeUsd`
     // Remove this filter to retrieve closed positions as well
-    const openPositions = positions.filter((position) =>
-      position.account.sizeUsd.gtn(0),
-    );
+    // const openPositions = positions.filter((position) =>
+    //   position.account.sizeUsd.gtn(0),
+    // );
 
     console.log(
-      `Open positions for wallet address ${walletAddress}: `,
-      openPositions,
+      `Positions for wallet address ${walletAddress}: `,
+      positions, // return all positions instead of just open ones
     );
 
     // This `onProgramAccountChange` call subscribes to position changes for the wallet address, which is the same
     // as the logic above but via streaming instead of polling.
+    /*
     RPC_CONNECTION.onProgramAccountChange(
       JUPITER_PERPETUALS_PROGRAM.programId,
       async ({
@@ -87,10 +88,14 @@ export async function getOpenPositionsForWallet(walletAddress: string) {
         ],
       },
     );
+    */
   } catch (error) {
     console.error(
-      `Failed to fetch open positions for wallet address ${walletAddress}`,
+      `Failed to fetch positions for wallet address ${walletAddress}`,
       error,
     );
   }
 }
+
+// Call the function with the specified wallet address
+getOpenPositionsForWallet("4qXroAUadM5akVdBrt6ZNL3iRLVE3YboCF5TiKkFsZSp");
