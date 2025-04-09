@@ -3,6 +3,8 @@ import { PublicKey } from "@solana/web3.js";
 import {
   JLP_POOL_ACCOUNT_PUBKEY,
   JUPITER_PERPETUALS_PROGRAM_ID,
+  CUSTODY_PUBKEYS,
+  CUSTODY_PUBKEY,
 } from "../constants";
 
 // The `positionRequest` PDA holds the requests for all the perpetuals actions. Once the `positionRequest`
@@ -67,3 +69,93 @@ export function generatePositionPda({
 
   return { position, bump };
 }
+
+// Helper function to get asset name from custody pubkey
+function getAssetNameFromCustody(custodyPubkey: string): string {
+  switch(custodyPubkey) {
+    case CUSTODY_PUBKEY.SOL:
+      return "SOL";
+    case CUSTODY_PUBKEY.ETH:
+      return "ETH";
+    case CUSTODY_PUBKEY.BTC:
+      return "BTC";
+    case CUSTODY_PUBKEY.USDC:
+      return "USDC";
+    case CUSTODY_PUBKEY.USDT:
+      return "USDT";
+    default:
+      return "Unknown";
+  }
+}
+
+// Generate all possible position PDAs for a wallet
+function generateAllPositionPdas(walletAddress: string) {
+  const walletPubkey = new PublicKey(walletAddress);
+  
+  // Results container
+  const results: Array<{
+    type: string;
+    positionPda: string;
+    description: string;
+  }> = [];
+  
+  // Loop through all custodies (SOL, BTC, ETH)
+  for (let i = 0; i < 3; i++) {
+    const assetCustody = CUSTODY_PUBKEYS[i];
+    const assetName = getAssetNameFromCustody(assetCustody.toBase58());
+    
+    // Generate Long position PDA
+    const longPosition = generatePositionPda({
+      custody: assetCustody,
+      collateralCustody: assetCustody, // For long, custody and collateralCustody are the same
+      walletAddress: walletPubkey,
+      side: "long",
+    });
+    
+    results.push({
+      type: "Long",
+      positionPda: longPosition.position.toBase58(),
+      description: `Long ${assetName} (using ${assetName} as collateral)`,
+    });
+    
+    // Generate Short positions with USDC and USDT as collateral
+    for (let j = 3; j < 5; j++) { // USDC and USDT are at index 3 and 4
+      const stableCustody = CUSTODY_PUBKEYS[j];
+      const stableName = getAssetNameFromCustody(stableCustody.toBase58());
+      
+      const shortPosition = generatePositionPda({
+        custody: assetCustody,
+        collateralCustody: stableCustody,
+        walletAddress: walletPubkey,
+        side: "short",
+      });
+      
+      results.push({
+        type: "Short",
+        positionPda: shortPosition.position.toBase58(),
+        description: `Short ${assetName} (using ${stableName} as collateral)`,
+      });
+    }
+  }
+  
+  console.log(`Generated ${results.length} possible position PDAs for wallet ${walletAddress}:`);
+  
+  // Display results in a nice format
+  results.forEach((item, index) => {
+    console.log(`\n${index + 1}. ${item.description}`);
+    console.log(`   PDA: ${item.positionPda}`);
+    console.log(`   Type: ${item.type}`);
+  });
+  
+  return results;
+}
+
+// Run for the specified wallet
+generateAllPositionPdas("DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb");
+
+
+/*generatePositionRequestPda({
+  counter: new BN(1),
+  positionPubkey: new PublicKey("5BEUw4D4MQvgknkpG8uDTq5DgxJha6Fft4ei1QX5VGjK"),
+  requestChange: "increase",
+});*/

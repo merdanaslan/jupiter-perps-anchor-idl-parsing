@@ -36,22 +36,30 @@ export async function getPositionsByPda(walletAddress: string) {
   try {
     const walletPubkey = new PublicKey(walletAddress);
     
-    // All possible combinations of positions
-    // For each asset (SOL, BTC, ETH):
-    // - Long positions use the asset as both custody and collateral
-    // - Short positions use the asset as custody and USDC/USDT as collateral
+    // All possible combinations of positions (9 total):
+    // 1. Long SOL (using SOL as collateral)
+    // 2. Long ETH (using ETH as collateral)
+    // 3. Long BTC (using BTC as collateral)
+    // 4. Short SOL (using USDC as collateral)
+    // 5. Short SOL (using USDT as collateral)
+    // 6. Short ETH (using USDC as collateral)
+    // 7. Short ETH (using USDT as collateral)
+    // 8. Short BTC (using USDC as collateral)
+    // 9. Short BTC (using USDT as collateral)
     const positionPdas: PublicKey[] = [];
     const positionInfos: Array<{
       type: string;
       custody: string;
       collateralCustody: string;
+      description: string;
     }> = [];
     
     // Loop through all custodies (SOL, BTC, ETH)
     for (let i = 0; i < 3; i++) {
       const assetCustody = CUSTODY_PUBKEYS[i];
+      const assetName = getAssetNameFromCustody(assetCustody.toBase58());
       
-      // Generate Long position PDA
+      // Generate Long position PDA (using the asset itself as collateral)
       const longPosition = generatePositionPda({
         custody: assetCustody,
         collateralCustody: assetCustody, // For long, custody and collateralCustody are the same
@@ -64,11 +72,13 @@ export async function getPositionsByPda(walletAddress: string) {
         type: "Long",
         custody: assetCustody.toBase58(),
         collateralCustody: assetCustody.toBase58(),
+        description: `Long ${assetName} (using ${assetName} as collateral)`,
       });
       
       // Generate Short positions with USDC and USDT as collateral
       for (let j = 3; j < 5; j++) { // USDC and USDT are at index 3 and 4
         const stableCustody = CUSTODY_PUBKEYS[j];
+        const stableName = getAssetNameFromCustody(stableCustody.toBase58());
         
         const shortPosition = generatePositionPda({
           custody: assetCustody,
@@ -82,13 +92,13 @@ export async function getPositionsByPda(walletAddress: string) {
           type: "Short",
           custody: assetCustody.toBase58(),
           collateralCustody: stableCustody.toBase58(),
+          description: `Short ${assetName} (using ${stableName} as collateral)`,
         });
       }
     }
     
     // Fetch all possible position accounts at once
     console.log(`Fetching ${positionPdas.length} possible positions for wallet ${walletAddress}...`);
-    // Use getMultipleAccountsInfo instead of getMultipleAccounts
     const accounts = await RPC_CONNECTION.getMultipleAccountsInfo(positionPdas);
     
     // Process and decode the accounts that exist
@@ -111,12 +121,10 @@ export async function getPositionsByPda(walletAddress: string) {
           positionInfo: positionInfos[index],
           account: decodedPosition,
           readable: {
+            description: positionInfos[index].description,
             side: decodedPosition.side.long !== undefined ? "Long" : "Short",
             asset: assetName,
             collateral: collateralName,
-            positionType: decodedPosition.side.long !== undefined 
-              ? `Long ${assetName}` 
-              : `Short ${assetName} with ${collateralName}`,
             openTime: new Date(decodedPosition.openTime.toNumber() * 1000).toISOString(),
             updateTime: new Date(decodedPosition.updateTime.toNumber() * 1000).toISOString(),
             price: BNToUSDRepresentation(decodedPosition.price, USDC_DECIMALS),
@@ -128,7 +136,7 @@ export async function getPositionsByPda(walletAddress: string) {
           }
         };
       })
-      .filter((position): position is NonNullable<typeof position> => position !== null); // Remove null entries
+      .filter((position): position is NonNullable<typeof position> => position !== null);
     
     // Separate into open and closed positions
     const openPositions = positions.filter(position => 
@@ -140,8 +148,42 @@ export async function getPositionsByPda(walletAddress: string) {
     );
     
     console.log(`Found ${positions.length} positions (${openPositions.length} open, ${closedPositions.length} closed)`);
-    console.log("Open positions:", openPositions.map(pos => pos.readable));
-    console.log("Closed positions:", closedPositions.map(pos => pos.readable));
+    
+    if (openPositions.length > 0) {
+      console.log("\nOpen positions:");
+      openPositions.forEach(pos => {
+        console.log(`- ${pos.readable.description}`);
+        console.log(`  Price: $${pos.readable.price}`);
+        console.log(`  Size: $${pos.readable.sizeUsd}`);
+        console.log(`  Collateral: $${pos.readable.collateralUsd}`);
+        console.log(`  Realized PnL: $${pos.readable.realisedPnlUsd}`);
+        console.log(`  Opened: ${pos.readable.openTime}`);
+        console.log(`  Last Updated: ${pos.readable.updateTime}`);
+        console.log(`  Raw Price: ${pos.readable.rawPrice}`);
+        console.log(`  Raw Realized PnL: ${pos.readable.rawRealisedPnl}`);
+        console.log("");
+      });
+    } else {
+      console.log("\nNo open positions found.");
+    }
+    
+    if (closedPositions.length > 0) {
+      console.log("\nClosed positions:");
+      closedPositions.forEach(pos => {
+        console.log(`- ${pos.readable.description}`);
+        console.log(`  Price: $${pos.readable.price}`);
+        console.log(`  Size: $${pos.readable.sizeUsd}`);
+        console.log(`  Collateral: $${pos.readable.collateralUsd}`);
+        console.log(`  Realized PnL: $${pos.readable.realisedPnlUsd}`);
+        console.log(`  Opened: ${pos.readable.openTime}`);
+        console.log(`  Last Updated: ${pos.readable.updateTime}`);
+        console.log(`  Raw Price: ${pos.readable.rawPrice}`);
+        console.log(`  Raw Realized PnL: ${pos.readable.rawRealisedPnl}`);
+        console.log("");
+      });
+    } else {
+      console.log("\nNo closed positions found.");
+    }
     
     return { openPositions, closedPositions, allPositions: positions };
   } catch (error) {

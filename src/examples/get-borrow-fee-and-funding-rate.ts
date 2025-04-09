@@ -95,3 +95,6 @@ export const getFundingRate = (custody: Custody, curtime: BN) => {
 
   return divCeil(currentFundingRate.mul(interval), new BN(3600));
 };
+
+
+// Hourly Borrow Fee = Total Tokens Locked / Tokens in Pool (Utilization) × Hourly Borrow Rate × Position Size

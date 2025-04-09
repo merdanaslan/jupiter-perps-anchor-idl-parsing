@@ -24,3 +24,13 @@ export async function getPositionPnl(positionPubkey: PublicKey) {
     BNToUSDRepresentation(hasProfit ? pnl : pnl.neg(), USDC_DECIMALS),
   );
 }
+
+// Use a position PDA instead of wallet address
+// This is the PDA for "Long SOL (using SOL as collateral)" for the wallet address
+getPositionPnl(new PublicKey("5BEUw4D4MQvgknkpG8uDTq5DgxJha6Fft4ei1QX5VGjK"));
+
+// Uncomment to check Short SOL with USDC
+// getPositionPnl(new PublicKey("2oVLxJwCdU4eDqy7Koe5QGH71W26bxBuYaTYk6kYg23z"));
+
+// Uncomment to check Short SOL with USDT
+// getPositionPnl(new PublicKey("GjhRnptPCa6qXuTyK9UsvA2NBRpKGPURXjVHFCnoq5qH"));

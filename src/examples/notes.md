@@ -37,6 +37,34 @@ According to Jupiter's documentation:
 3. **Decode**: We decode the binary data using the IDL structure
 4. **Format**: We create human-readable representations of the data
 
+## Jupiter Perpetuals Execution Models
+
+Jupiter Perpetuals uses two distinct execution models for trading operations:
+
+### 1. Request-based flows (non-instant)
+- User submits a request transaction that is stored on-chain
+- Keepers (off-chain services) execute the request in a separate transaction later
+- Events like `DecreasePositionEvent` are emitted when the request is fulfilled
+- Benefits:
+  - Works with any RPC provider regardless of compute limits
+  - Compatible with operations that might exceed compute limits
+  - More gas-efficient for users as keepers pay execution gas
+- Examples: Standard position increases/decreases that aren't marked as "instant"
+
+### 2. Instant flows
+- Everything happens in a single transaction
+- User directly executes the operation without waiting for a keeper
+- Events like `InstantDecreasePositionEvent` are emitted
+- Benefits:
+  - Immediate execution without waiting
+  - Reduced slippage risk due to no delay
+  - Simplified transaction flow
+- Examples: Instant market orders, instant limit orders
+
+Both approaches can be used for market or limit orders depending on the parameters. The "instant" prefix indicates single-transaction execution rather than the order type.
+
+When tracking positions via events, you need to monitor both types of events since users might use either execution method.
+
 ## Field Notes
 
 ### Price
@@ -50,6 +78,48 @@ All closed positions show `realisedPnlUsd: 0` because Jupiter's design resets th
 - Only partially closed positions maintain a non-zero `realisedPnlUsd`
 - When a position's `sizeUsd` becomes 0, it's considered fully closed and its `realisedPnlUsd` is reset to 0
 - The actual PnL is settled to the user at closing time, but not stored in the position account afterward
+
+## Fee Structure in Jupiter Perpetuals
+
+Jupiter Perpetuals charges several types of fees that affect position profitability:
+
+### 1. Base Fees
+
+- **Opening/Increasing Fee**: Currently 6 basis points (0.06%) for all assets (SOL, BTC, ETH)
+  - Controlled by `increasePositionBps` in the custody account
+  - Applied when opening a new position or adding to an existing one
+
+- **Closing/Decreasing Fee**: Also 6 basis points (0.06%) for all assets
+  - Controlled by `decreasePositionBps` in the custody account
+  - Applied when reducing or closing a position
+
+Base fees scale linearly with position size (e.g., $1,000 position → $0.60 fee, $10,000 position → $6.00 fee).
+
+### 2. Price Impact Fees
+
+- Additional fees based on the position size relative to market depth
+- Larger positions cause more market impact and thus incur higher fees
+- Calculated as: `position.sizeUsd * BPS_POWER / custody.pricing.tradeImpactFeeScalar`
+- The `tradeImpactFeeScalar` is specific to each asset and represents market depth
+
+### 3. Funding Rates / Interest
+
+- Long positions pay funding to short positions when funding rate is positive
+- Short positions pay funding to long positions when funding rate is negative
+- Accrues over time based on the funding rate
+- Calculated using the difference between the current `cumulativeInterestRate` and the `cumulativeInterestSnapshot` when the position was opened
+- Applied to the position size: `(currentRate - openingRateSnapshot) * position.sizeUsd / RATE_POWER`
+
+### Calculating Total Fees
+
+To calculate the total fees for a position's lifecycle:
+
+1. **Opening Fee** = Base Fee + Price Impact Fee = `(increasePositionBps + impactFeeBps) * sizeUsd / BPS_POWER`
+2. **Funding Paid/Received** = `(cumulativeInterestRate - cumulativeInterestSnapshot) * sizeUsd / RATE_POWER`
+3. **Closing Fee** = Base Fee + Price Impact Fee = `(decreasePositionBps + impactFeeBps) * sizeUsd / BPS_POWER`
+4. **Total Fees** = Opening Fee + Funding + Closing Fee
+
+These fees are factored into liquidation price calculations and affect the overall profitability of positions.
 
 ## Limitations
 
