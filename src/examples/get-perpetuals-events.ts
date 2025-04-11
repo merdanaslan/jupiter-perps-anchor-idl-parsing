@@ -74,29 +74,11 @@ export async function getPositionEvents() {
   // Use specific position PDA
   const positionPDA = new PublicKey("5dMxAFxqRSzjx8C3NbnDhyaJzj53QRXiGj4NCtQGkdqR");
   
-  // Check if account exists first to avoid unnecessary RPC calls
-  console.log("Checking if position exists...");
-  try {
-    const accountInfo = await RPC_CONNECTION.getAccountInfo(positionPDA);
-    if (!accountInfo) {
-      console.log("Position account not found");
-      return [];
-    }
-    console.log("Position account exists, fetching transactions...");
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error checking position:", errorMessage);
-    return [];
-  }
-  
-  // Add a delay before next RPC call
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
   // Limit to only 5 most recent transactions
   console.log("Getting signatures...");
   const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
     positionPDA,
-    { limit: 5 } // Further reduce to just 5 transactions
+    { limit: 5 } // Only fetch 5 transactions
   );
 
   if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
@@ -146,6 +128,9 @@ export async function getPositionEvents() {
             // Format the event data for human readability
             const formattedEvent = formatEventData(decodedEvent);
             
+            // Get transaction fee (safe because we already checked tx.meta != null)
+            const feeInSOL = tx.meta!.fee / 1_000_000_000; // Convert lamports to SOL
+            
             return {
               event: formattedEvent,
               tx: {
@@ -153,6 +138,8 @@ export async function getPositionEvents() {
                 blockTime: tx.blockTime 
                   ? new Date(tx.blockTime * 1000).toISOString()
                   : null,
+                fee: `${feeInSOL} SOL`,
+                feeInLamports: tx.meta!.fee
               }
             };
           } catch (error) {
