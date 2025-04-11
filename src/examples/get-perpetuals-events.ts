@@ -5,6 +5,7 @@ import {
 } from "../constants";
 import { PublicKey } from "@solana/web3.js";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
+import { inspect } from 'util';
 
 type AnchorIdlEvent<EventName extends keyof IdlEvents<Perpetuals>> = {
   name: EventName;
@@ -120,4 +121,6 @@ export async function getPositionEvents() {
 }
 
 
-getPositionEvents().then(console.log);
+getPositionEvents().then(events => {
+  console.log(inspect(events, { depth: null, colors: true }));
+});
