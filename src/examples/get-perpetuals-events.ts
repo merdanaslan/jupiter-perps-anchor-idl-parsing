@@ -2,15 +2,69 @@ import { DISCRIMINATOR_SIZE, IdlEvents, utils } from "@coral-xyz/anchor";
 import {
   JUPITER_PERPETUALS_PROGRAM,
   RPC_CONNECTION,
+  USDC_DECIMALS,
 } from "../constants";
 import { PublicKey } from "@solana/web3.js";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
 import { inspect } from 'util';
+import { BN } from "@coral-xyz/anchor";
+import { BNToUSDRepresentation } from "../utils";
 
 type AnchorIdlEvent<EventName extends keyof IdlEvents<Perpetuals>> = {
   name: EventName;
   data: IdlEvents<Perpetuals>[EventName];
 };
+
+// Helper function to format event data to make it human-readable
+function formatEventData(event: any): any {
+  if (!event) return null;
+  
+  const { name, data } = event;
+  
+  // Create a new clean object instead of modifying the original
+  const cleanData: any = {};
+  
+  // Convert PublicKeys to strings and format numbers
+  Object.keys(data).forEach(key => {
+    const value = data[key];
+    
+    // Handle PublicKey objects
+    if (value instanceof PublicKey) {
+      cleanData[key] = value.toString();
+    }
+    // Handle BigNumbers (BN)
+    else if (value instanceof BN) {
+      if (key.includes('Usd') || key.includes('usd') || key.includes('Price') || key.includes('price') || key === 'pnlDelta') {
+        cleanData[key] = `$${BNToUSDRepresentation(value, USDC_DECIMALS)}`;
+      } else if (key.includes('Time')) {
+        cleanData[key] = new Date(value.toNumber() * 1000).toISOString();
+      } else {
+        cleanData[key] = value.toString();
+      }
+    }
+    // Handle arrays
+    else if (Array.isArray(value)) {
+      cleanData[key] = value;
+    }
+    // Handle side enum
+    else if (key === 'positionSide') {
+      cleanData[key] = value === 1 ? "Long" : "Short";
+    }
+    // Handle null values
+    else if (value === null) {
+      cleanData[key] = null;
+    }
+    // Handle regular values
+    else {
+      cleanData[key] = value;
+    }
+  });
+  
+  return {
+    name,
+    data: cleanData
+  };
+}
 
 // The Jupiter Perpetuals program emits events (via Anchor's CPI events: https://book.anchor-lang.com/anchor_in_depth/events.html)
 // for most trade events. These events can be parsed and analyzed to track things like trades, executed TPSL requests, liquidations
@@ -87,9 +141,19 @@ export async function getPositionEvents() {
             const eventData = utils.bytes.base64.encode(
               ixData.subarray(DISCRIMINATOR_SIZE)
             );
+            const decodedEvent = JUPITER_PERPETUALS_PROGRAM.coder.events.decode(eventData);
+            
+            // Format the event data for human readability
+            const formattedEvent = formatEventData(decodedEvent);
+            
             return {
-              event: JUPITER_PERPETUALS_PROGRAM.coder.events.decode(eventData),
-              tx
+              event: formattedEvent,
+              tx: {
+                signature: confirmedSignatureInfos[i].signature,
+                blockTime: tx.blockTime 
+                  ? new Date(tx.blockTime * 1000).toISOString()
+                  : null,
+              }
             };
           } catch (error) {
             console.log("Failed to decode instruction data");
