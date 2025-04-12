@@ -196,7 +196,7 @@ export async function getPositionsByPda(walletAddress: string) {
 }
 
 // Call the function with the specified wallet address
-getPositionsByPda("4qXroAUadM5akVdBrt6ZNL3iRLVE3YboCF5TiKkFsZSp");
+getPositionsByPda("DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb");
 
 // market order is "coin- margined" (fartcoin, trumpcoin etc.) -> determine which one 
 // limit order is "usd- margined" 

@@ -140,6 +140,87 @@ This implementation **does not** fetch transaction history - only current positi
 
 This would be significantly more complex and resource-intensive than the current implementation.
 
+## Tracking Position Events
+
+To properly track historical trades and position events, you need to query and process events emitted by the Jupiter Perpetuals program.
+
+### Key Events to Track
+
+**Position Opening/Increasing:**
+- `IncreasePositionEvent` - Standard (keeper-executed) position increase
+- `InstantIncreasePositionEvent` - Immediate position increase
+- `IncreasePositionPreSwapEvent` - Preliminary swap event when input token differs from collateral
+
+**Position Closing/Decreasing:**
+- `DecreasePositionEvent` - Standard (keeper-executed) position decrease
+- `InstantDecreasePositionEvent` - Immediate position decrease
+- `ClosePositionRequestEvent` - Request to close a position (keeper model)
+- `DecreasePositionPostSwapEvent` - Swap event when closing a position with a different desired token
+
+**Liquidations:**
+- `LiquidateFullPositionEvent` - Complete liquidation of a position
+- `LiquidatePartialPositionEvent` - Partial liquidation of a position
+
+**Position Request:**
+- `CreatePositionRequestEvent` - Initial position request creation
+- `CancelTPSLEvent` - Cancellation of TP/SL orders
+
+### IncreasePositionPreSwapEvent Fields
+
+The `IncreasePositionPreSwapEvent` event captures details about token swaps that happen before increasing a position:
+
+- `positionRequestKey` - The PDA of the position request
+- `transferAmount` - The amount of tokens transferred in the swap
+- `collateralCustodyPreSwapAmount` - The amount of collateral tokens received after the swap
+
+This event is emitted when a user deposits Token A but wants to use Token B as collateral, requiring an intermediate swap.
+
+### DecreasePositionPostSwapEvent Fields
+
+The `DecreasePositionPostSwapEvent` event captures details about token swaps that happen after decreasing a position:
+
+- `positionRequestKey` - The PDA of the position request
+- `swapAmount` - The amount of tokens being swapped
+- `jupiterMinimumOut` - The minimum amount expected to receive from the swap (optional parameter)
+
+This event is emitted when a user closes a position and requests to receive a different token than their collateral token (e.g., closing a SOL-collateralized position but requesting USDC).
+
+### Position Request Types
+
+The `positionRequestType` field in events like `DecreasePositionEvent` indicates what triggered the position change:
+
+- **Type 1**: Market Order (direct user action)
+- **Type 2**: Take Profit Order (automated execution when price rises to TP level)
+- **Type 3**: Stop Loss Order (automated execution when price drops to SL level)
+- **Type 4**: Limit Order (pending execution at a specific price)
+
+### Identifying Individual Trades
+
+Since position PDAs are reused (e.g., the same PDA is used for all Short SOL with USDC collateral positions), you need to identify distinct trade lifecycles by:
+
+1. Looking for position open events (first event for a PDA or after a complete close)
+2. Tracking events chronologically
+3. Identifying complete closes when position size returns to zero
+4. Grouping all events between an open and a close as a single trade
+
+### Take Profit / Stop Loss
+
+In Jupiter Perpetuals:
+- You can have one TP and one SL order active simultaneously for a position
+- You cannot have multiple TPs or multiple SLs at the same time
+- TP/SL executions appear as normal decrease events with appropriate `positionRequestType`
+
+### Collateral & Swaps
+
+**Opening positions:**
+- Long positions typically use the asset itself as collateral (SOL for SOL long)
+- Short positions use stablecoins (USDC/USDT) as collateral
+- If depositing a different token than required, a swap occurs first (emitting `IncreasePositionPreSwapEvent`)
+
+**Closing positions:**
+- When closing, users can specify which token to receive via the `desiredMint` parameter
+- If requesting a different token than the collateral, a swap happens automatically
+
 ## References
 
 - [Jupiter Perpetuals Position Account Documentation](https://dev.jup.ag/docs/perp-api/position-account)
