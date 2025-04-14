@@ -163,7 +163,9 @@ export async function getPositionEvents() {
   const increasePositionEvents = allEvents.filter(
     (data) =>
       data?.event?.name === "IncreasePositionEvent" ||
-      data?.event?.name === "InstantIncreasePositionEvent"
+      data?.event?.name === "InstantIncreasePositionEvent" ||
+      data?.event?.name === "DecreasePositionEvent" ||
+      data?.event?.name === "InstantDecreasePositionEvent"
   );
   
   console.log(`Found ${increasePositionEvents.length} increase position events`);
