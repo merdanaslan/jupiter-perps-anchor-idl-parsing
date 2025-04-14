@@ -23,6 +23,9 @@ const PERP_ORACLE_ACCOUNTS = {
   [CUSTODY_PUBKEY.SOL]: new PublicKey("39cWjvHrpHNz2SbXv6ME4NPhqBDBd4KsjUYv5JkHEAJU"),
   [CUSTODY_PUBKEY.ETH]: new PublicKey("5URYohbPy32nxK1t3jAHVNfdWY2xTubHiFvLrE3VhXEp"),
   [CUSTODY_PUBKEY.BTC]: new PublicKey("4HBbPx9QJdjJ7GUe6bsiJjGybvfpDhQMMPXP1UEa7VT5"),
+  // Add USDC and USDT oracle accounts
+  [CUSTODY_PUBKEY.USDC]: new PublicKey("A28T5pKtscnhDo6C1Sz786Tup88aTjt8uyKewjVvPrGk"),
+  [CUSTODY_PUBKEY.USDT]: new PublicKey("AGW7q2a3WxCzh5TB2Q6yNde1Nf41g3HLaaXdybz7cbBU"),
 };
 
 // Define types for price data
@@ -39,29 +42,40 @@ type AssetMarkPrices = {
 };
 
 /**
- * Fetch current mark prices for Jupiter perpetual assets (SOL, ETH, BTC)
+ * Asset names for friendly display
+ */
+const ASSET_NAMES: { [key: string]: string } = {
+  [CUSTODY_PUBKEY.SOL]: "SOL",
+  [CUSTODY_PUBKEY.ETH]: "ETH",
+  [CUSTODY_PUBKEY.BTC]: "BTC",
+  [CUSTODY_PUBKEY.USDC]: "USDC",
+  [CUSTODY_PUBKEY.USDT]: "USDT",
+};
+
+/**
+ * Fetch current mark prices for Jupiter perpetual assets
+ * @param includingStablecoins Whether to include stablecoins (USDC, USDT) in the results
  * @returns Object containing mark price data for each asset
  */
-export async function fetchMarkPrices(): Promise<AssetMarkPrices> {
+export async function fetchMarkPrices(includingStablecoins: boolean = false): Promise<AssetMarkPrices> {
   try {
-    // Only fetch prices for non-stablecoin assets (SOL, ETH, BTC)
-    const oracleAccountsToFetch = [
-      PERP_ORACLE_ACCOUNTS[CUSTODY_PUBKEY.SOL],
-      PERP_ORACLE_ACCOUNTS[CUSTODY_PUBKEY.ETH],
-      PERP_ORACLE_ACCOUNTS[CUSTODY_PUBKEY.BTC],
-    ];
+    // Determine which assets to fetch
+    const custodyKeys = [CUSTODY_PUBKEY.SOL, CUSTODY_PUBKEY.ETH, CUSTODY_PUBKEY.BTC];
+    
+    // Add stablecoins if requested
+    if (includingStablecoins) {
+      custodyKeys.push(CUSTODY_PUBKEY.USDC, CUSTODY_PUBKEY.USDT);
+    }
+    
+    const oracleAccountsToFetch = custodyKeys.map(key => PERP_ORACLE_ACCOUNTS[key]);
     
     const feeds = await dovesProgram.account.priceFeed.fetchMultiple(oracleAccountsToFetch);
     
     const markPrices: AssetMarkPrices = {};
     
-    // Map each oracle account to its corresponding asset name
-    const assetNames = ["SOL", "ETH", "BTC"];
-    const custodyKeys = [CUSTODY_PUBKEY.SOL, CUSTODY_PUBKEY.ETH, CUSTODY_PUBKEY.BTC];
-    
     feeds.forEach((feed, index) => {
       if (!feed) {
-        console.error(`Failed to fetch oracle price for ${assetNames[index]}`);
+        console.error(`Failed to fetch oracle price for ${ASSET_NAMES[custodyKeys[index]] || custodyKeys[index]}`);
         return;
       }
       
@@ -85,30 +99,17 @@ export async function fetchMarkPrices(): Promise<AssetMarkPrices> {
 
 /**
  * Print mark prices to console in a readable format
+ * @param includingStablecoins Whether to include stablecoins (USDC, USDT) in the results
  */
-export async function printMarkPrices(): Promise<void> {
+export async function printMarkPrices(includingStablecoins: boolean = false): Promise<void> {
   try {
-    const markPrices = await fetchMarkPrices();
+    const markPrices = await fetchMarkPrices(includingStablecoins);
     
     console.log("Jupiter Perp Mark Prices:");
     console.log("------------------------");
     
     Object.entries(markPrices).forEach(([custodyKey, priceData]) => {
-      let assetName: string;
-      
-      switch (custodyKey) {
-        case CUSTODY_PUBKEY.SOL:
-          assetName = "SOL";
-          break;
-        case CUSTODY_PUBKEY.ETH:
-          assetName = "ETH";
-          break;
-        case CUSTODY_PUBKEY.BTC:
-          assetName = "BTC";
-          break;
-        default:
-          assetName = "Unknown";
-      }
+      const assetName = ASSET_NAMES[custodyKey] || "Unknown";
       
       console.log(
         `${assetName}: $${priceData.priceUsd} (as of ${priceData.formattedTimestamp})`
@@ -123,7 +124,7 @@ export async function printMarkPrices(): Promise<void> {
  * Example usage
  */
 if (require.main === module) {
-  printMarkPrices()
+  printMarkPrices(true) // Include stablecoins
     .then(() => process.exit(0))
     .catch((error) => {
       console.error("Error in mark price example:", error);
