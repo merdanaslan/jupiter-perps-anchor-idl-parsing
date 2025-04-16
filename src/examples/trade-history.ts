@@ -133,9 +133,9 @@ export async function getPositionEvents() {
       continue;
     }
     
-    // Add a 3 second delay between each transaction processing
+    // Add a 5 second delay between each transaction processing
     if (i > 0) {
-      console.log(`Waiting 3 seconds before processing next transaction...`);
+      console.log(`Waiting 5 seconds before processing next transaction...`);
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
     
@@ -405,6 +405,19 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
   // Get all events for the position
   const events = await getPositionEvents();
   
+  // Display raw events first
+  console.log("\n======== RAW EVENTS ========");
+  events.forEach((evt, i) => {
+    if (evt && evt.event) {
+      console.log(`\nEvent ${i+1}:`);
+      console.log(`Type: ${evt.event.name}`);
+      console.log(`Transaction: ${evt.tx.signature}`);
+      console.log(`Time: ${evt.tx.blockTime}`);
+      console.log("Data:", evt.event.data);
+    }
+  });
+  console.log("============================\n");
+  
   // Group events into trades
   return groupEventsIntoTrades(events);
 }
@@ -415,19 +428,85 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
 async function analyzeTradeHistory() {
   const { activeTrades, completedTrades } = await getPositionTradeHistory();
   
+  console.log(`\n======== TRADE SUMMARY ========`);
   console.log(`Active trades: ${activeTrades.length}`);
   console.log(`Completed trades: ${completedTrades.length}`);
   
-  // Print trade details
-  completedTrades.forEach((trade) => {
-    const side = trade.positionSide;
-    const status = trade.status === "liquidated" ? "LIQUIDATED" : "CLOSED";
-    const pnl = trade.pnl ? `$${trade.pnl.toFixed(2)}` : "N/A";
-    const roi = trade.roi ? `${trade.roi.toFixed(2)}%` : "N/A";
-    
-    console.log(
-      `${side} ${status} | Entry: $${trade.entryPrice.toFixed(2)} Exit: $${(trade.exitPrice || 0).toFixed(2)} | PnL: ${pnl} (${roi})`
-    );
+  // Print detailed trade information
+  if (activeTrades.length > 0) {
+    console.log("\n------- ACTIVE TRADES -------");
+    activeTrades.forEach((trade, index) => {
+      printDetailedTradeInfo(trade, index);
+    });
+  }
+  
+  if (completedTrades.length > 0) {
+    console.log("\n------- COMPLETED TRADES -------");
+    completedTrades.forEach((trade, index) => {
+      printDetailedTradeInfo(trade, index);
+    });
+  }
+  
+  console.log("===============================");
+}
+
+// Add a new function to print detailed trade information
+function printDetailedTradeInfo(trade: ITrade, index: number) {
+  const side = trade.positionSide;
+  const status = trade.status === "liquidated" ? "LIQUIDATED" : (trade.status === "closed" ? "CLOSED" : "ACTIVE");
+  const pnl = trade.pnl ? `$${trade.pnl.toFixed(2)}` : "N/A";
+  const roi = trade.roi ? `${trade.roi.toFixed(2)}%` : "N/A";
+  
+  console.log(`\nTrade #${index + 1} (ID: ${trade.id}):`);
+  console.log(`Position: ${side} ${status}`);
+  console.log(`Owner: ${trade.owner}`);
+  console.log(`Entry Price: $${trade.entryPrice.toFixed(2)}`);
+  
+  if (trade.exitPrice) {
+    console.log(`Exit Price: $${trade.exitPrice.toFixed(2)}`);
+  }
+  
+  console.log(`Size: $${trade.sizeUsd.toFixed(2)}`);
+  console.log(`Collateral: $${trade.collateralUsd.toFixed(2)}`);
+  console.log(`Leverage: ${trade.leverage.toFixed(2)}x`);
+  
+  if (trade.pnl !== undefined) {
+    console.log(`PnL: ${pnl} (${roi})`);
+    console.log(`Profitable: ${trade.hasProfit ? "Yes" : "No"}`);
+  }
+  
+  console.log(`Opened: ${trade.openTime}`);
+  
+  if (trade.closeTime) {
+    console.log(`Closed: ${trade.closeTime}`);
+  }
+  
+  console.log(`Events in trade: ${trade.events.length}`);
+  
+  // Print a summary of events in this trade
+  console.log("\nEvents:");
+  trade.events.forEach((evt, i) => {
+    if (evt && evt.event) {
+      console.log(`  ${i+1}. ${evt.event.name} at ${evt.tx.blockTime}`);
+      
+      // For increase events, show size and collateral
+      if (evt.event.name.includes('Increase')) {
+        console.log(`     Size: ${evt.event.data.sizeUsdDelta}`);
+        console.log(`     Collateral: ${evt.event.data.collateralUsdDelta}`);
+        console.log(`     Price: ${evt.event.data.price}`);
+      }
+      // For decrease events, show size and pnl
+      else if (evt.event.name.includes('Decrease')) {
+        console.log(`     Size: ${evt.event.data.sizeUsdDelta}`);
+        console.log(`     PnL: ${evt.event.data.pnlDelta}`);
+        console.log(`     Price: ${evt.event.data.price}`);
+      }
+      // For liquidation events
+      else if (evt.event.name.includes('Liquidate')) {
+        console.log(`     PnL: ${evt.event.data.pnlDelta}`);
+        console.log(`     Price: ${evt.event.data.price}`);
+      }
+    }
   });
 }
 
