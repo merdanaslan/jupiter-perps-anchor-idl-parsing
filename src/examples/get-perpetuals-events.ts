@@ -78,7 +78,7 @@ export async function getPositionEvents() {
   console.log("Getting signatures...");
   const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
     positionPDA,
-    { limit: 5 } // Only fetch 5 transactions
+    { limit: 10 } // Only fetch 5 transactions
   );
 
   if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
@@ -100,7 +100,7 @@ export async function getPositionEvents() {
     // Add a 3 second delay between each transaction processing
     if (i > 0) {
       console.log(`Waiting 3 seconds before processing next transaction...`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
     
     try {
@@ -165,7 +165,12 @@ export async function getPositionEvents() {
       data?.event?.name === "IncreasePositionEvent" ||
       data?.event?.name === "InstantIncreasePositionEvent" ||
       data?.event?.name === "DecreasePositionEvent" ||
-      data?.event?.name === "InstantDecreasePositionEvent"
+      data?.event?.name === "InstantDecreasePositionEvent" ||
+      data?.event?.name === "LiquidateFullPositionEvent" ||
+      data?.event?.name === "IncreasePositionPreSwapEvent" ||
+      data?.event?.name === "DecreasePositionPreSwapEvent" ||
+      data?.event?.name === "InstantCreateTpslEvent" ||
+      data?.event?.name === "InstantUpdateTpslEvent" 
   );
   
   console.log(`Found ${increasePositionEvents.length} increase position events`);

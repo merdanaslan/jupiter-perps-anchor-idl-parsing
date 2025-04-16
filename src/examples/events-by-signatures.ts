@@ -25,6 +25,7 @@ export type EventType =
   | 'InstantCreateTpslEvent'
   | 'InstantUpdateTpslEvent'
   | 'CreatePositionRequestEvent'
+  | 'ClosePositionRequestEvent'
   | 'AllEvents'; // Special type to include all events
 
 // Helper function to format event data to make it human-readable
@@ -98,7 +99,7 @@ export async function getEventsBySignatures(
   const {
     commitment = 'confirmed',
     maxSupportedTransactionVersion = 0,
-    delayBetweenRequests = 500 // Default delay of 500ms between requests
+    delayBetweenRequests = 5000 // Default delay of 500ms between requests
   } = options;
 
   if (!signatures || signatures.length === 0) {
@@ -195,11 +196,15 @@ export async function getEventsBySignatures(
 if (require.main === module) {
   // Example signature(s) to fetch events for
   const signatures = [
-    '3LCzyaERWwBS16q24WZkdrqz48box8Vaq8ZQi7TB5e1aQNqv8UcdwwprPRNjUB9MDmmHEkjuyvEsNz5DmGFav6C'
+    '2GdjT4eTDGKi8qjsCKHZJ5svZ9eLPr9gqbm2JuyiBYsNMqaqJasiXJZ3uFegFRHCjCJXxifLqmeHQEN53cyLYVQQ',
+    '474ZKhT9SEgp4Ks2j4RFquEgjuoDpMbsx3THBA7sUv9pRiLsAmXLDP9MThodMdQNtydvMMvS3ydTkgUaqPNpypEk',
+    'PPaWUikmNW9itnL5vWZtSQnhUZ4Fimbvd9FQqabxtubJ5wbdg1wFVXdJruNTZtjN645H9EHTfdJNeAQjvo6PhRw',
+    'zZDp5eyTDSCqbvomK9px4utUVU9ftT5qo19KW9fRBGAYTrWH5BhCWAGPjdzvUiTpKhZzrQ2h1ap35VJwwf5VN1w'
+
   ];
 
   // Example event types to filter for (or use 'AllEvents' to include all)
-  const eventTypes: EventType[] = ['AllEvents', 'IncreasePositionEvent', 'DecreasePositionEvent', 'InstantIncreasePositionEvent', 'InstantDecreasePositionEvent'];
+  const eventTypes: EventType[] = ['AllEvents'];
   
   // Fetch and display events
   getEventsBySignatures(signatures, eventTypes)

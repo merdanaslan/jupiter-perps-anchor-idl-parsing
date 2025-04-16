@@ -151,8 +151,10 @@ function generateAllPositionPdas(walletAddress: string) {
 }
 
 // Run for the specified wallet
-generateAllPositionPdas("DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb");
+generateAllPositionPdas("4qXroAUadM5akVdBrt6ZNL3iRLVE3YboCF5TiKkFsZSp");
 
+// DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb small wallet used for testing
+// 4qXroAUadM5akVdBrt6ZNL3iRLVE3YboCF5TiKkFsZSp large wallet used for testing
 
 /*generatePositionRequestPda({
   counter: new BN(1),

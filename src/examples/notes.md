@@ -189,7 +189,8 @@ This event is emitted when a user closes a position and requests to receive a di
 
 The `positionRequestType` field in events like `DecreasePositionEvent` indicates what triggered the position change:
 
-- **Type 1**: Market Order (direct user action)
+- **Type 0**: Instant/Direct execution (executed immediately without going through the request system)
+- **Type 1**: Market Order (direct user action through request)
 - **Type 2**: Take Profit Order (automated execution when price rises to TP level)
 - **Type 3**: Stop Loss Order (automated execution when price drops to SL level)
 - **Type 4**: Limit Order (pending execution at a specific price)
@@ -221,7 +222,338 @@ In Jupiter Perpetuals:
 - When closing, users can specify which token to receive via the `desiredMint` parameter
 - If requesting a different token than the collateral, a swap happens automatically
 
+## Fetching User Trade History
+
+To get the complete trade history of a user in Jupiter Perpetuals, you need to fetch and process these events:
+
+### Required Events for Trade History
+
+1. **Position Opening/Increasing:**
+   - `IncreasePositionEvent` - Standard (keeper-executed) position increases
+   - `InstantIncreasePositionEvent` - Immediate position increases
+
+2. **Position Closing/Decreasing:**
+   - `DecreasePositionEvent` - Standard (keeper-executed) position decreases
+   - `InstantDecreasePositionEvent` - Immediate position decreases
+
+3. **Liquidations:**
+   - `LiquidateFullPositionEvent` - Complete liquidations of positions
+
+4. **Additional events for swap information (if needed):**
+   - `IncreasePositionPreSwapEvent` - Preliminary swap when input token differs from collateral
+   - `DecreasePositionPostSwapEvent` - Swap when closing a position with a different desired token
+
+To get the most comprehensive view, you should filter these events by the user's wallet address in the `owner` field of the event data.
+
+### Request vs. Execution Events
+
+Jupiter Perpetuals uses a two-phase process for many operations:
+
+1. **Request Creation Phase:**
+   - When a user initiates an action, a "request" event is created:
+     - `CreatePositionRequestEvent` - Created when a user initiates any position change
+     - `ClosePositionRequestEvent` - Created when a user requests to close a position
+   - These events mark when an order is **placed**
+
+2. **Execution Phase:**
+   - When the request is fulfilled (either by keepers or instantly), an "execution" event is emitted:
+     - `IncreasePositionEvent` - When a position is increased by a keeper
+     - `DecreasePositionEvent` - When a position is decreased by a keeper
+     - `InstantIncreasePositionEvent` - When a position is increased instantly
+     - `InstantDecreasePositionEvent` - When a position is decreased instantly
+   - These events mark when an order is **executed**
+
+For trade history tracking, the execution events contain the most critical information (prices, sizes, PnL, etc.). Request events provide additional context about when and how orders were placed.
+
+### Field Enumerations
+
+#### RequestType Field
+
+Based on the Jupiter Perpetuals IDL, the `requestType` field represents:
+
+- **Type 0**: Market - A market order execution
+- **Type 1**: Trigger - A triggered order (take profit, stop loss, limit)
+
+#### RequestChange Field
+
+The `requestChange` field indicates the type of position change:
+
+- **Type 0**: None - No change to position
+- **Type 1**: Increase - Open or add to a position
+- **Type 2**: Decrease - Close or reduce a position
+
+#### Position Side Field
+
+The `positionSide` field indicates whether the position is long or short:
+
+- **Value 0**: Short position
+- **Value 1**: Long position
+
+### Order Type Identification
+
+In execution events like `DecreasePositionEvent`, the `positionRequestType` field helps determine if the execution was from a market order, take profit, stop loss, or limit order.
+
+Remember that an instant execution (Type 0) doesn't mean it's not a market order - it just means it was executed immediately rather than through the request-keeper system.
+
+### Detailed Event Field Descriptions
+
+#### IncreasePositionEvent Fields
+
+This event is emitted when a position is increased through the request-based (keeper) execution model:
+
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionSizeUsd` (u64): Total size of the position in USD (6 decimal places)
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `positionRequestKey` (PublicKey): The unique identifier of the position request
+- `positionRequestMint` (PublicKey): The mint address used in the request
+- `positionRequestChange` (u8): Type of change (0=None, 1=Increase, 2=Decrease)
+- `positionRequestType` (u8): Type of order (0=Market, 1=Trigger)
+- `positionRequestCollateralDelta` (u64): Change in collateral amount
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `sizeUsdDelta` (u64): Amount the position size changed in USD (6 decimal places)
+- `collateralUsdDelta` (u64): Amount the collateral changed in USD (6 decimal places)
+- `collateralTokenDelta` (u64): Amount the collateral changed in token terms
+- `price` (u64): Execution price in USD (6 decimal places)
+- `priceSlippage` (Option<u64>): Price slippage incurred, if any
+- `feeToken` (u64): Fees paid in token amount
+- `feeUsd` (u64): Fees paid in USD (6 decimal places)
+- `openTime` (i64): Unix timestamp of the position opening
+- `referral` (Option<PublicKey>): Referral address, if applicable
+
+#### InstantIncreasePositionEvent Fields
+
+This event is emitted when a position is increased through the instant execution model:
+
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionSizeUsd` (u64): Total size of the position in USD (6 decimal places)
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `sizeUsdDelta` (u64): Amount the position size changed in USD (6 decimal places)
+- `collateralUsdDelta` (u64): Amount the collateral changed in USD (6 decimal places)
+- `collateralTokenDelta` (u64): Amount the collateral changed in token terms
+- `price` (u64): Execution price in USD (6 decimal places)
+- `priceSlippage` (u64): Price slippage incurred
+- `feeToken` (u64): Fees paid in token amount
+- `feeUsd` (u64): Fees paid in USD (6 decimal places)
+- `openTime` (i64): Unix timestamp of the position opening
+- `referral` (Option<PublicKey>): Referral address, if applicable
+
+#### DecreasePositionEvent Fields
+
+This event is emitted when a position is decreased through the request-based (keeper) execution model:
+
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionSizeUsd` (u64): Remaining size of the position in USD (6 decimal places)
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `positionRequestKey` (PublicKey): The unique identifier of the position request
+- `positionRequestMint` (PublicKey): The mint address used in the request
+- `positionRequestChange` (u8): Type of change (0=None, 1=Increase, 2=Decrease)
+- `positionRequestType` (u8): Type of order (0=Market, 1=Trigger)
+- `hasProfit` (bool): Whether the position closed with profit (true) or loss (false)
+- `pnlDelta` (u64): Profit and loss amount in USD (6 decimal places)
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `sizeUsdDelta` (u64): Amount the position size changed in USD (6 decimal places)
+- `transferAmountUsd` (u64): Amount transferred to the user in USD (6 decimal places)
+- `transferToken` (Option<u64>): Amount transferred to the user in tokens, if applicable
+- `price` (u64): Execution price in USD (6 decimal places)
+- `priceSlippage` (Option<u64>): Price slippage incurred, if any
+- `feeUsd` (u64): Fees paid in USD (6 decimal places)
+- `openTime` (i64): Unix timestamp of the position opening
+- `referral` (Option<PublicKey>): Referral address, if applicable
+
+#### InstantDecreasePositionEvent Fields
+
+This event is emitted when a position is decreased through the instant execution model:
+
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionSizeUsd` (u64): Remaining size of the position in USD (6 decimal places)
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `desiredMint` (PublicKey): The mint address the user wants to receive
+- `hasProfit` (bool): Whether the position closed with profit (true) or loss (false)
+- `pnlDelta` (u64): Profit and loss amount in USD (6 decimal places)
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `sizeUsdDelta` (u64): Amount the position size changed in USD (6 decimal places)
+- `transferAmountUsd` (u64): Amount transferred to the user in USD (6 decimal places)
+- `transferToken` (u64): Amount transferred to the user in tokens
+- `price` (u64): Execution price in USD (6 decimal places)
+- `priceSlippage` (u64): Price slippage incurred
+- `feeUsd` (u64): Fees paid in USD (6 decimal places)
+- `openTime` (i64): Unix timestamp of the position opening
+- `referral` (Option<PublicKey>): Referral address, if applicable
+
+#### LiquidateFullPositionEvent Fields
+
+This event is emitted when a position is fully liquidated:
+
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionCollateralMint` (PublicKey): The mint address of the position's collateral
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `positionSizeUsd` (u64): Size of the liquidated position in USD (6 decimal places)
+- `hasProfit` (bool): Whether the position closed with profit (true) or loss (false)
+- `pnlDelta` (u64): Profit and loss amount in USD (6 decimal places)
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `transferAmountUsd` (u64): Amount transferred to the user in USD (6 decimal places)
+- `transferToken` (u64): Amount transferred to the user in tokens
+- `price` (u64): Liquidation price in USD (6 decimal places)
+- `feeUsd` (u64): Fees paid in USD (6 decimal places)
+- `liquidationFeeUsd` (u64): Liquidation penalty in USD (6 decimal places)
+- `openTime` (i64): Unix timestamp of the position opening
+
+#### IncreasePositionPreSwapEvent Fields
+
+The `IncreasePositionPreSwapEvent` event captures details about token swaps that happen before increasing a position:
+
+- `positionRequestKey` (PublicKey): The PDA of the position request
+- `transferAmount` (u64): The amount of tokens transferred in the swap
+- `collateralCustodyPreSwapAmount` (u64): The amount of collateral tokens received after the swap
+
+This event is emitted when a user deposits Token A but wants to use Token B as collateral, requiring an intermediate swap.
+
+#### DecreasePositionPostSwapEvent Fields
+
+The `DecreasePositionPostSwapEvent` event captures details about token swaps that happen after decreasing a position:
+
+- `positionRequestKey` (PublicKey): The PDA of the position request
+- `swapAmount` (u64): The amount of tokens being swapped
+- `jupiterMinimumOut` (Option<u64>): The minimum amount expected to receive from the swap (optional parameter)
+
+This event is emitted when a user closes a position and requests to receive a different token than their collateral token (e.g., closing a SOL-collateralized position but requesting USDC).
+
+#### CreatePositionRequestEvent Fields
+
+This event is emitted when a user initiates a position request:
+
+- `owner` (PublicKey): The owner's wallet address
+- `pool` (PublicKey): The pool used for the position
+- `positionKey` (PublicKey): The unique identifier of the position
+- `positionSide` (u8): 0 for short, 1 for long
+- `positionMint` (PublicKey): The mint address of the position's asset
+- `positionCustody` (PublicKey): The custody account for the position's asset
+- `positionCollateralMint` (PublicKey): The mint address of the position's collateral
+- `positionCollateralCustody` (PublicKey): The custody account for the position's collateral
+- `positionRequestKey` (PublicKey): The unique identifier of the position request
+- `positionRequestMint` (PublicKey): The mint address used in the request
+- `sizeUsdDelta` (u64): Amount the position size will change in USD (6 decimal places)
+- `collateralDelta` (u64): Amount the collateral will change in token terms
+- `priceSlippage` (u64): Price slippage limit
+- `jupiterMinimumOut` (Option<u64>): Minimum amount expected from Jupiter swap, if applicable
+- `preSwapAmount` (Option<u64>): Amount to be swapped before position change, if applicable
+- `requestChange` (u8): Type of change (0=None, 1=Increase, 2=Decrease)
+- `openTime` (i64): Unix timestamp of the request creation
+- `referral` (Option<PublicKey>): Referral address, if applicable
+
+#### ClosePositionRequestEvent Fields
+
+This event is emitted when a user requests to close a position:
+
+- `entirePosition` (Option<bool>): Whether the entire position is being closed
+- `executed` (bool): Whether the request has been executed
+- `requestChange` (u8): Type of change (0=None, 1=Increase, 2=Decrease)
+- `requestType` (u8): Type of order (0=Market, 1=Trigger)
+- `side` (u8): Position side (1=Long, 2=Short)
+- `positionRequestKey` (PublicKey): The unique identifier of the position request
+- `owner` (PublicKey): The owner's wallet address
+- `mint` (PublicKey): The mint address involved in the request
+- `amount` (u64): Token amount involved in the request
+
+## Trade History Tracking Logic
+
+To track and group Jupiter Perpetuals events into coherent trades, we employ a lifecycle-based approach that handles reused position PDAs and various trade scenarios.
+
+### Trade Grouping Algorithm
+
+1. **Chronological Processing**:
+   - Sort all events by timestamp to process them in the order they occurred
+   - Filter to include only execution events (IncreasePositionEvent, DecreasePositionEvent, etc.)
+
+2. **Position Lifecycle Tracking**:
+   - Maintain a "lifecycle counter" for each position key (PDA)
+   - The unique trade ID is formed by combining: `${positionKey}-${lifecycleCounter}`
+   - Increment the counter whenever a position is fully closed (positionSizeUsd = 0)
+
+3. **Trade Boundaries**:
+   - A trade begins with an IncreasePositionEvent where current size equals size delta (new position)
+   - A trade ends with a DecreasePositionEvent where positionSizeUsd = 0 (fully closed)
+   - A trade can also end with a LiquidateFullPositionEvent
+
+4. **Position Updates**:
+   - Track partial increases by checking if a position already exists in the active trades map
+   - Track partial decreases by updating the position size without closing the trade
+   - Only move trades to "completed" when they are fully closed or liquidated
+
+### Scenarios Handled
+
+The grouping logic handles these scenarios:
+
+1. **Simple Open and Close**:
+   - User opens a position (IncreasePositionEvent)
+   - User closes entire position (DecreasePositionEvent with positionSizeUsd = $0.00)
+
+2. **Partial Closes**:
+   - User opens a position (IncreasePositionEvent)
+   - User partially closes position (DecreasePositionEvent with positionSizeUsd > $0.00)
+   - User closes remaining position (DecreasePositionEvent with positionSizeUsd = $0.00)
+
+3. **Multiple Increases**:
+   - User opens position (IncreasePositionEvent)
+   - User adds to position (another IncreasePositionEvent)
+   - User closes entire position (DecreasePositionEvent with positionSizeUsd = $0.00)
+
+4. **Liquidation**:
+   - User opens position (IncreasePositionEvent)
+   - Position gets liquidated (LiquidateFullPositionEvent)
+
+5. **Multiple Trading Cycles (Reused PDA)**:
+   - User opens position (IncreasePositionEvent)
+   - Closes position fully (DecreasePositionEvent with positionSizeUsd = $0.00)
+   - Later opens new position with same PDA (IncreasePositionEvent)
+   - These are tracked as separate trades with different lifecycle counters
+
+### Code Implementation
+
+The core logic is implemented in the `groupEventsIntoTrades` function which:
+
+1. Sorts events chronologically
+2. Filters for execution events
+3. Processes each event according to its type (increase, decrease, liquidate)
+4. Maintains state with lifecycle counters and active trades
+5. Returns a complete list of trades sorted by recency
+
+The implementation handles edge cases like:
+- Calculating correct entry/exit prices
+- Tracking PnL and profit/loss status
+
 ## References
 
 - [Jupiter Perpetuals Position Account Documentation](https://dev.jup.ag/docs/perp-api/position-account)
-- [Solana Web3.js Documentation](https://solana-labs.github.io/solana-web3.js/) 
+- [Solana Web3.js Documentation](https://solana-labs.github.io/solana-web3.js/)
+
+### Note on Documentation Sources
+
+The meanings of the positionRequestType values and other field interpretations are derived from:
+1. Analysis of the Jupiter Perpetuals codebase
+2. Example implementations in this repository
+3. Community documentation
+4. Testing and verification with actual event data
+
+These interpretations are not explicitly documented in the IDL itself, as the IDL only defines the data structure but not the semantic meaning of enum values. 
