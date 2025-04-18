@@ -12,6 +12,7 @@ import {
 } from "../constants";
 import { generatePositionPda } from "./generate-position-and-position-request-pda";
 import { BNToUSDRepresentation } from "../utils";
+import { fetchMarkPrices } from "./mark-price";
 
 // Helper function to get asset name from custody pubkey
 function getAssetNameFromCustody(custodyPubkey: string): string {
@@ -151,32 +152,20 @@ export async function getPositionsByPda(walletAddress: string) {
     
     if (openPositions.length > 0) {
       console.log("\nOpen positions:");
-      openPositions.forEach(pos => {
-        console.log(`- ${pos.readable.description}`);
-        displayPositionDetails(pos);
-        console.log(""); // Add empty line between positions
-      });
+      // Use for..of to handle async calls properly
+      for (const pos of openPositions) {
+        console.log(`\n- ${pos.readable.description}`);
+        await displayPositionDetails(pos);
+      }
     } else {
       console.log("\nNo open positions found.");
     }
     
-    if (closedPositions.length > 0) {
-      console.log("\nClosed positions:");
-      closedPositions.forEach(pos => {
-        console.log(`- ${pos.readable.description}`);
-        displayPositionDetails(pos);
-        console.log(""); // Add empty line between positions
-      });
-    } else {
-      console.log("\nNo closed positions found.");
-    }
+    // No display for closed positions
     
     return { openPositions, closedPositions, allPositions: positions };
   } catch (error) {
-    console.error(
-      `Failed to fetch positions for wallet address ${walletAddress}`,
-      error
-    );
+    console.error(`Failed to fetch positions for wallet address ${walletAddress}`, error);
     return { openPositions: [], closedPositions: [], allPositions: [] };
   }
 }
@@ -219,28 +208,68 @@ type PositionWithInfo = {
   };
 };
 
-function displayPositionDetails(position: PositionWithInfo) {
-  // Display all position fields
-  console.log(`Position PDA: ${position.publicKey.toString()}`);
-  console.log(`  Owner: ${position.account.owner.toString()}`);
-  console.log(`  Pool: ${position.account.pool.toString()}`);
-  console.log(`  Asset Custody: ${position.account.custody.toString()}`);
-  console.log(`  Collateral Custody: ${position.account.collateralCustody.toString()}`);
-  console.log(`  Side: ${position.account.side.long ? "Long" : "Short"}`);
-  console.log(`  Price: $${BNToUSDRepresentation(position.account.price, USDC_DECIMALS)}`);
-  console.log(`  Size: $${BNToUSDRepresentation(position.account.sizeUsd, USDC_DECIMALS)}`);
-  console.log(`  Collateral: $${BNToUSDRepresentation(position.account.collateralUsd, USDC_DECIMALS)}`);
-  console.log(`  Realized PnL: $${BNToUSDRepresentation(position.account.realisedPnlUsd, USDC_DECIMALS)}`);
-  console.log(`  Open Time: ${new Date(position.account.openTime.toNumber() * 1000).toISOString()}`);
-  console.log(`  Last Update Time: ${new Date(position.account.updateTime.toNumber() * 1000).toISOString()}`);
-  console.log(`  Cumulative Interest Snapshot: ${position.account.cumulativeInterestSnapshot.toString()}`);
-  console.log(`  Locked Amount: ${position.account.lockedAmount.toString()}`);
-  console.log(`  Bump: ${position.account.bump}`);
-  
-  // Raw values
-  /* console.log(`  Raw Price: ${position.account.price.toString()}`);
-  console.log(`  Raw Size: ${position.account.sizeUsd.toString()}`);
-  console.log(`  Raw Collateral: ${position.account.collateralUsd.toString()}`);
-  console.log(`  Raw Realized PnL: ${position.account.realisedPnlUsd.toString()}`);
-  */
+// Make displayPositionDetails async for mark price fetching
+async function displayPositionDetails(position: PositionWithInfo) {
+  try {
+    // Get asset symbols
+    const assetSymbol = getAssetNameFromCustody(position.account.custody.toString());
+    const collateralSymbol = getAssetNameFromCustody(position.account.collateralCustody.toString());
+    
+    // Calculate leverage
+    let leverage = 0;
+    if (!position.account.collateralUsd.isZero() && !position.account.sizeUsd.isZero()) {
+      leverage = position.account.sizeUsd.mul(new BN(1_000_000)).div(position.account.collateralUsd).toNumber() / 1_000_000;
+    }
+    
+    // Calculate notional size (amount of the asset)
+    const notionalSize = position.account.price.isZero() ? 
+      0 : 
+      position.account.sizeUsd.mul(new BN(1_000_000)).div(position.account.price).toNumber() / 1_000_000;
+    
+    // Fetch current mark price
+    const markPrices = await fetchMarkPrices(true);
+    const assetCustodyStr = position.account.custody.toString();
+    const markPriceData = markPrices[assetCustodyStr];
+    
+    if (!markPriceData) {
+      throw new Error(`Mark price not available for ${assetSymbol}`);
+    }
+    
+    // Convert prices to the same scale for comparison
+    const currentPrice = parseFloat(markPriceData.priceUsd);
+    const entryPrice = parseFloat(BNToUSDRepresentation(position.account.price, USDC_DECIMALS));
+    
+    // Calculate unrealized PnL using the proper formula
+    let unrealizedPnl;
+    if (position.account.side.long) {
+      // For LONG: (Current Price - Entry Price) × Notional Size
+      unrealizedPnl = (currentPrice - entryPrice) * notionalSize;
+    } else {
+      // For SHORT: (Entry Price - Current Price) × Notional Size
+      unrealizedPnl = (entryPrice - currentPrice) * notionalSize;
+    }
+    
+    // Calculate ROI
+    const collateralUsd = parseFloat(BNToUSDRepresentation(position.account.collateralUsd, USDC_DECIMALS));
+    const unrealizedRoi = collateralUsd > 0 ? (unrealizedPnl / collateralUsd) * 100 : 0;
+    
+    // Display position information
+    console.log(`Position PDA: ${position.publicKey.toString()}`);
+    console.log(`  Owner: ${position.account.owner.toString()}`);
+    console.log(`  Asset: ${assetSymbol}`);
+    console.log(`  Collateral: ${collateralSymbol}`);
+    console.log(`  Side: ${position.account.side.long ? "Long" : "Short"}`);
+    console.log(`  Entry Price: $${BNToUSDRepresentation(position.account.price, USDC_DECIMALS)}`);
+    console.log(`  Current Price: $${markPriceData.priceUsd}`);
+    console.log(`  Position Size (USD): $${BNToUSDRepresentation(position.account.sizeUsd, USDC_DECIMALS)}`);
+    console.log(`  Notional Size: ${notionalSize.toFixed(6)} ${assetSymbol}`);
+    console.log(`  Collateral: $${BNToUSDRepresentation(position.account.collateralUsd, USDC_DECIMALS)}`);
+    console.log(`  Leverage: ${leverage.toFixed(2)}x`);
+    console.log(`  Realized PnL: $${BNToUSDRepresentation(position.account.realisedPnlUsd, USDC_DECIMALS)}`);
+    console.log(`  Unrealized PnL: $${unrealizedPnl.toFixed(2)} (${unrealizedRoi.toFixed(2)}%)`);
+    console.log(`  Open Time: ${new Date(position.account.openTime.toNumber() * 1000).toISOString()}`);
+    console.log(`  Last Update Time: ${new Date(position.account.updateTime.toNumber() * 1000).toISOString()}`);
+  } catch (error: unknown) {
+    console.error(`Error displaying position details: ${(error as Error).message}`);
+  }
 }

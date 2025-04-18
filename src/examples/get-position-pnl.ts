@@ -9,7 +9,7 @@ export async function getPositionPnl(positionPubkey: PublicKey) {
     await JUPITER_PERPETUALS_PROGRAM.account.position.fetch(positionPubkey);
 
   // NOTE: We assume the token price is $100 (scaled to 6 decimal places as per the USDC mint) as an example here for simplicity
-  const tokenPrice = new BN(100_000_000);
+  const tokenPrice = new BN(84573.05);
 
   const hasProfit = position.side.long
     ? tokenPrice.gt(position.price)
@@ -27,7 +27,7 @@ export async function getPositionPnl(positionPubkey: PublicKey) {
 
 // Use a position PDA instead of wallet address
 // This is the PDA for "Long SOL (using SOL as collateral)" for the wallet address
-getPositionPnl(new PublicKey("5BEUw4D4MQvgknkpG8uDTq5DgxJha6Fft4ei1QX5VGjK"));
+getPositionPnl(new PublicKey("EgvqoPV3QnUMEvhTSnxiqouye7bmDpT3p8HtuQ3AtiwJ"));
 
 // Uncomment to check Short SOL with USDC
 // getPositionPnl(new PublicKey("2oVLxJwCdU4eDqy7Koe5QGH71W26bxBuYaTYk6kYg23z"));
