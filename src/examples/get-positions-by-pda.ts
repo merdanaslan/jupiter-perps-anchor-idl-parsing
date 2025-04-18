@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { type IdlAccounts } from "@coral-xyz/anchor";
+import { type IdlAccounts, BN } from "@coral-xyz/anchor";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
 import {
   CUSTODY_PUBKEY,
@@ -153,15 +153,8 @@ export async function getPositionsByPda(walletAddress: string) {
       console.log("\nOpen positions:");
       openPositions.forEach(pos => {
         console.log(`- ${pos.readable.description}`);
-        console.log(`  Price: $${pos.readable.price}`);
-        console.log(`  Size: $${pos.readable.sizeUsd}`);
-        console.log(`  Collateral: $${pos.readable.collateralUsd}`);
-        console.log(`  Realized PnL: $${pos.readable.realisedPnlUsd}`);
-        console.log(`  Opened: ${pos.readable.openTime}`);
-        console.log(`  Last Updated: ${pos.readable.updateTime}`);
-        console.log(`  Raw Price: ${pos.readable.rawPrice}`);
-        console.log(`  Raw Realized PnL: ${pos.readable.rawRealisedPnl}`);
-        console.log("");
+        displayPositionDetails(pos);
+        console.log(""); // Add empty line between positions
       });
     } else {
       console.log("\nNo open positions found.");
@@ -171,15 +164,8 @@ export async function getPositionsByPda(walletAddress: string) {
       console.log("\nClosed positions:");
       closedPositions.forEach(pos => {
         console.log(`- ${pos.readable.description}`);
-        console.log(`  Price: $${pos.readable.price}`);
-        console.log(`  Size: $${pos.readable.sizeUsd}`);
-        console.log(`  Collateral: $${pos.readable.collateralUsd}`);
-        console.log(`  Realized PnL: $${pos.readable.realisedPnlUsd}`);
-        console.log(`  Opened: ${pos.readable.openTime}`);
-        console.log(`  Last Updated: ${pos.readable.updateTime}`);
-        console.log(`  Raw Price: ${pos.readable.rawPrice}`);
-        console.log(`  Raw Realized PnL: ${pos.readable.rawRealisedPnl}`);
-        console.log("");
+        displayPositionDetails(pos);
+        console.log(""); // Add empty line between positions
       });
     } else {
       console.log("\nNo closed positions found.");
@@ -196,7 +182,7 @@ export async function getPositionsByPda(walletAddress: string) {
 }
 
 // Call the function with the specified wallet address
-getPositionsByPda("DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb");
+getPositionsByPda("6CpZQLKSx5LTo5p5bkUaonrUcLtraQwttJK8QRQpfiEp");
 
 // market order is "coin- margined" (fartcoin, trumpcoin etc.) -> determine which one 
 // limit order is "usd- margined" 
@@ -206,4 +192,55 @@ Only partially closed positions maintain a non-zero realisedPnlUsd value
 Completely closed positions (like the ones we see) have their PnL settled to the user and reset to 0
 When a position's sizeUsd becomes 0, it's considered fully closed and its realisedPnlUsd is also reset to 0
 The actual PnL from the trades would be recorded in on-chain events at the time of closing, but is not stored in the position account after full closure. This is a design choice to simplify accounting.
-*/ 
+*/
+
+type PositionWithInfo = {
+  publicKey: PublicKey;
+  positionInfo: {
+    type: string;
+    custody: string;
+    collateralCustody: string;
+    description: string;
+  };
+  account: IdlAccounts<Perpetuals>["position"];
+  readable: {
+    description: string;
+    side: string;
+    asset: string;
+    collateral: string;
+    openTime: string;
+    updateTime: string;
+    price: string;
+    sizeUsd: string;
+    collateralUsd: string;
+    realisedPnlUsd: string;
+    rawPrice: string;
+    rawRealisedPnl: string;
+  };
+};
+
+function displayPositionDetails(position: PositionWithInfo) {
+  // Display all position fields
+  console.log(`Position PDA: ${position.publicKey.toString()}`);
+  console.log(`  Owner: ${position.account.owner.toString()}`);
+  console.log(`  Pool: ${position.account.pool.toString()}`);
+  console.log(`  Asset Custody: ${position.account.custody.toString()}`);
+  console.log(`  Collateral Custody: ${position.account.collateralCustody.toString()}`);
+  console.log(`  Side: ${position.account.side.long ? "Long" : "Short"}`);
+  console.log(`  Price: $${BNToUSDRepresentation(position.account.price, USDC_DECIMALS)}`);
+  console.log(`  Size: $${BNToUSDRepresentation(position.account.sizeUsd, USDC_DECIMALS)}`);
+  console.log(`  Collateral: $${BNToUSDRepresentation(position.account.collateralUsd, USDC_DECIMALS)}`);
+  console.log(`  Realized PnL: $${BNToUSDRepresentation(position.account.realisedPnlUsd, USDC_DECIMALS)}`);
+  console.log(`  Open Time: ${new Date(position.account.openTime.toNumber() * 1000).toISOString()}`);
+  console.log(`  Last Update Time: ${new Date(position.account.updateTime.toNumber() * 1000).toISOString()}`);
+  console.log(`  Cumulative Interest Snapshot: ${position.account.cumulativeInterestSnapshot.toString()}`);
+  console.log(`  Locked Amount: ${position.account.lockedAmount.toString()}`);
+  console.log(`  Bump: ${position.account.bump}`);
+  
+  // Raw values
+  /* console.log(`  Raw Price: ${position.account.price.toString()}`);
+  console.log(`  Raw Size: ${position.account.sizeUsd.toString()}`);
+  console.log(`  Raw Collateral: ${position.account.collateralUsd.toString()}`);
+  console.log(`  Raw Realized PnL: ${position.account.realisedPnlUsd.toString()}`);
+  */
+}

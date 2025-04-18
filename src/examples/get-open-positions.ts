@@ -45,3 +45,5 @@ export async function getOpenPositions() {
     console.error("Failed to fetch open positions", error);
   }
 }
+
+getOpenPositions();

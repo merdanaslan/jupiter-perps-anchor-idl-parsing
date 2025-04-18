@@ -108,7 +108,7 @@ function formatEventData(event: any): any {
 // This function shows how to listen to these onchain events and parse / filter them.
 export async function getPositionEvents() {
   // Use specific position PDA
-  const positionPDA = new PublicKey("5dMxAFxqRSzjx8C3NbnDhyaJzj53QRXiGj4NCtQGkdqR");
+  const positionPDA = new PublicKey("EgvqoPV3QnUMEvhTSnxiqouye7bmDpT3p8HtuQ3AtiwJ");
   
   
   console.log("Getting signatures...");
