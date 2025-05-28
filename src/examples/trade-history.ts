@@ -371,6 +371,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     } else if (name === 'LiquidateFullPositionEvent') {
       const price = parseUsdValue(data.price);
       const pnlDelta = parseUsdValue(data.pnlDelta);
+      const fee = parseUsdValue(data.feeUsd || '0');  // Extract fee from liquidation event
       
       if (!activeTrade) {
         // We have a liquidation event but no matching active trade
@@ -385,6 +386,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       activeTrade.closeTime = tx.blockTime;
       activeTrade.pnl = (activeTrade.pnl || 0) + pnlDelta;
       activeTrade.hasProfit = data.hasProfit;
+      activeTrade.totalFees = (activeTrade.totalFees || 0) + fee;  // Add liquidation fee to total
       
       // Store the maximum size the position reached
       activeTrade.finalSize = activeTrade.maxSize || activeTrade.sizeUsd;
@@ -544,8 +546,20 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         action = trade.positionSide === "Long" ? "Sell" : "Buy";
       }
       
-      // Determine if market or limit
-      const orderType = eventType.includes('Instant') ? "Market" : "Limit";
+      // Determine if market or limit based on positionRequestType and event name
+      let orderType = "Market"; // Default to Market
+      if (eventType.includes('Instant')) {
+        // All Instant events are market orders by definition
+        orderType = "Market";
+      } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+        // For non-Instant events, check positionRequestType if available
+        if (eventData.positionRequestType !== undefined) {
+          orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+        }
+      } else if (eventType.includes('Liquidate')) {
+        // Liquidations are always forced market orders
+        orderType = "Market";
+      }
       
       // Get sizes
       const sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
