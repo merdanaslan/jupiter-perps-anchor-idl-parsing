@@ -3,6 +3,7 @@ import {
   JUPITER_PERPETUALS_PROGRAM,
   RPC_CONNECTION,
   USDC_DECIMALS,
+  CUSTODY_PUBKEY,
 } from "../constants";
 import { PublicKey } from "@solana/web3.js";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
@@ -41,10 +42,14 @@ interface ITrade {
   entryPrice: number;
   exitPrice?: number;
   sizeUsd: number;
+  finalSize?: number; // Size before closing (for completed trades)
+  maxSize?: number;   // Maximum size the position reached
+  notionalSize?: number; // Amount of the asset (not USD)
   collateralUsd: number;
   leverage: number;
   pnl?: number;
   roi?: number;
+  totalFees?: number; // Total fees paid for the position
   openTime: string | null;
   closeTime?: string | null;
   events: EventWithTx[];
@@ -108,13 +113,13 @@ function formatEventData(event: any): any {
 // This function shows how to listen to these onchain events and parse / filter them.
 export async function getPositionEvents() {
   // Use specific position PDA
-  const positionPDA = new PublicKey("EgvqoPV3QnUMEvhTSnxiqouye7bmDpT3p8HtuQ3AtiwJ");
+  const positionPDA = new PublicKey("3FCyHP3VcruHn4PptfR9rJe3faJFGPpQqH16aBVSzwKW");
   
-  
+  // Maximum transaction signatures to return (between 1 and 1,000).
   console.log("Getting signatures...");
   const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
     positionPDA,
-    { limit: 10 } // Only fetch 10 transactions
+    { limit: 10 } // Only fetch 10 transactions AND minContextSlot for custom timeinterval 
   );
 
   if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
@@ -278,9 +283,13 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       const positionSizeUsd = parseUsdValue(data.positionSizeUsd);
       const collateralUsdDelta = parseUsdValue(data.collateralUsdDelta);
       const price = parseUsdValue(data.price);
+      const fee = parseUsdValue(data.feeUsd || '0');
       
       // Check if this is a new position (first increase) or adding to an existing position
       if (!activeTrade) {
+        // Get asset symbol from the custody address
+        const assetSymbol = getAssetNameFromCustody(data.positionCustody || "");
+        
         // This is a new trade
         const newTrade: ITrade = {
           id: tradeId,
@@ -288,10 +297,13 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
           positionSide: data.positionSide,
           status: "active",
           owner: data.owner,
+          asset: assetSymbol,
           entryPrice: price,
           sizeUsd: sizeUsdDelta,
+          maxSize: sizeUsdDelta, // Initialize maxSize
           collateralUsd: collateralUsdDelta,
           leverage: sizeUsdDelta / collateralUsdDelta,
+          totalFees: fee, // Track initial fee
           openTime: tx.blockTime,
           events: [eventWithTx],
         };
@@ -304,8 +316,10 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
         
         // Update the trade
         activeTrade.sizeUsd = newSizeUsd;
+        activeTrade.maxSize = Math.max(newSizeUsd, activeTrade.maxSize || 0);
         activeTrade.collateralUsd = newCollateralUsd;
         activeTrade.leverage = newSizeUsd / newCollateralUsd;
+        activeTrade.totalFees = (activeTrade.totalFees || 0) + fee; // Add to total fees
         activeTrade.events.push(eventWithTx);
       }
     } else if (name === 'DecreasePositionEvent' || name === 'InstantDecreasePositionEvent') {
@@ -313,6 +327,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       const positionSizeUsd = parseUsdValue(data.positionSizeUsd);
       const price = parseUsdValue(data.price);
       const pnlDelta = parseUsdValue(data.pnlDelta);
+      const fee = parseUsdValue(data.feeUsd || '0');
       
       if (!activeTrade) {
         // We have a decrease event but no matching active trade
@@ -327,6 +342,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       activeTrade.exitPrice = price;
       activeTrade.pnl = (activeTrade.pnl || 0) + pnlDelta;
       activeTrade.hasProfit = data.hasProfit;
+      activeTrade.totalFees = (activeTrade.totalFees || 0) + fee; // Add to total fees
       
       // Calculate ROI based on PnL and collateral
       if (activeTrade.pnl !== undefined) {
@@ -335,6 +351,9 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       
       // Check if position is fully closed
       if (positionSizeUsd === 0) {
+        // Store the maximum size the position reached, not just the last decrease
+        activeTrade.finalSize = activeTrade.maxSize || activeTrade.sizeUsd + sizeUsdDelta;
+        
         // This position is fully closed - move it to completed trades
         activeTrade.status = "closed";
         activeTrade.closeTime = tx.blockTime;
@@ -366,6 +385,9 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       activeTrade.closeTime = tx.blockTime;
       activeTrade.pnl = (activeTrade.pnl || 0) + pnlDelta;
       activeTrade.hasProfit = data.hasProfit;
+      
+      // Store the maximum size the position reached
+      activeTrade.finalSize = activeTrade.maxSize || activeTrade.sizeUsd;
       activeTrade.sizeUsd = 0; // Set size to 0 as it's fully liquidated
       
       // Calculate ROI based on PnL and collateral
@@ -458,17 +480,40 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
   const roi = trade.roi ? `${trade.roi.toFixed(2)}%` : "N/A";
   
   console.log(`\nTrade #${index + 1} (ID: ${trade.id}):`);
-  console.log(`Position: ${side} ${status}`);
-  console.log(`Owner: ${trade.owner}`);
+  
+  // Replace Position field with Symbol
+  if (trade.asset) {
+    console.log(`Symbol: ${trade.asset}`);
+  }
+  
+  // Show just Long or Short as Direction
+  console.log(`Direction: ${side}`);
+  
+  console.log(`Status: ${status}`);
   console.log(`Entry Price: $${trade.entryPrice.toFixed(2)}`);
   
   if (trade.exitPrice) {
     console.log(`Exit Price: $${trade.exitPrice.toFixed(2)}`);
   }
   
-  console.log(`Size: $${trade.sizeUsd.toFixed(2)}`);
+  // Show finalSize for completed trades if available, otherwise show sizeUsd
+  const displaySize = (trade.status !== "active" && trade.finalSize) ? 
+    trade.finalSize : trade.sizeUsd;
+  console.log(`Size: $${displaySize.toFixed(2)}`);
+  
+  // Calculate and display notional size
+  if (trade.entryPrice > 0) {
+    const notionalSize = displaySize / trade.entryPrice;
+    console.log(`Notional Size: ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+  }
+  
   console.log(`Collateral: $${trade.collateralUsd.toFixed(2)}`);
   console.log(`Leverage: ${trade.leverage.toFixed(2)}x`);
+  
+  // Display total fees
+  if (trade.totalFees !== undefined) {
+    console.log(`Total Fees: $${trade.totalFees.toFixed(2)}`);
+  }
   
   if (trade.pnl !== undefined) {
     console.log(`PnL: ${pnl} (${roi})`);
@@ -483,31 +528,59 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
   
   console.log(`Events in trade: ${trade.events.length}`);
   
-  // Print a summary of events in this trade
+  // Enhanced events summary
   console.log("\nEvents:");
   trade.events.forEach((evt, i) => {
     if (evt && evt.event) {
-      console.log(`  ${i+1}. ${evt.event.name} at ${evt.tx.blockTime}`);
+      const eventData = evt.event.data;
+      const eventType = evt.event.name;
+      const eventTime = evt.tx.blockTime || "Unknown";
       
-      // For increase events, show size and collateral
-      if (evt.event.name.includes('Increase')) {
-        console.log(`     Size: ${evt.event.data.sizeUsdDelta}`);
-        console.log(`     Collateral: ${evt.event.data.collateralUsdDelta}`);
-        console.log(`     Price: ${evt.event.data.price}`);
+      // Determine if buy or sell
+      let action = "";
+      if (eventType.includes('Increase')) {
+        action = trade.positionSide === "Long" ? "Buy" : "Sell";
+      } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+        action = trade.positionSide === "Long" ? "Sell" : "Buy";
       }
-      // For decrease events, show size and pnl
-      else if (evt.event.name.includes('Decrease')) {
-        console.log(`     Size: ${evt.event.data.sizeUsdDelta}`);
-        console.log(`     PnL: ${evt.event.data.pnlDelta}`);
-        console.log(`     Price: ${evt.event.data.price}`);
-      }
-      // For liquidation events
-      else if (evt.event.name.includes('Liquidate')) {
-        console.log(`     PnL: ${evt.event.data.pnlDelta}`);
-        console.log(`     Price: ${evt.event.data.price}`);
-      }
+      
+      // Determine if market or limit
+      const orderType = eventType.includes('Instant') ? "Market" : "Limit";
+      
+      // Get sizes
+      const sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
+      const price = parseUsdValue(eventData.price || "0");
+      const notionalSize = price > 0 ? sizeUsd / price : 0;
+      const fee = parseUsdValue(eventData.feeUsd || "0");
+      
+      console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+      console.log(`     Date: ${eventTime}`);
+      console.log(`     Action: ${action}`);
+      console.log(`     Type: ${orderType}`);
+      console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+      console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
+      console.log(`     Price: ${eventData.price || "N/A"}`);
+      console.log(`     Fee: $${fee.toFixed(2)}`);
     }
   });
+}
+
+// Add helper function to get asset name from custody pubkey if not already present
+function getAssetNameFromCustody(custodyPubkey: string): string {
+  switch(custodyPubkey) {
+    case CUSTODY_PUBKEY.SOL:
+      return "SOL";
+    case CUSTODY_PUBKEY.ETH:
+      return "ETH";
+    case CUSTODY_PUBKEY.BTC:
+      return "BTC";
+    case CUSTODY_PUBKEY.USDC:
+      return "USDC";
+    case CUSTODY_PUBKEY.USDT:
+      return "USDT";
+    default:
+      return "Unknown";
+  }
 }
 
 // Run the example

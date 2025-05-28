@@ -8,7 +8,7 @@ This code demonstrates how to fetch position data from Jupiter Perpetuals withou
 
 ### Using PDAs vs. getProgramAccounts
 
-We initially tried using `getProgramAccounts` with filters, but this approach had drawbacks:
+I initially tried using `getProgramAccounts` with filters, but this approach had drawbacks:
 
 1. Many RPC providers limit or disable `getProgramAccounts` due to its resource intensity
 2. The query can time out when scanning large programs like Jupiter Perpetuals
@@ -557,3 +557,14 @@ The meanings of the positionRequestType values and other field interpretations a
 4. Testing and verification with actual event data
 
 These interpretations are not explicitly documented in the IDL itself, as the IDL only defines the data structure but not the semantic meaning of enum values. 
+
+
+
+1. add limit support
+2. add preswap/postswap support
+3. display more values to open positions 
+4. add the liquidation support if not already there 
+
+
+
+
