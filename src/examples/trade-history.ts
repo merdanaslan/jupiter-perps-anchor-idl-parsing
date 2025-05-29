@@ -639,7 +639,7 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
           orderType = "Market";
         }
         
-        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
         console.log(`     Action: ${action}`);
         console.log(`     Type: ${orderType}`);
@@ -664,7 +664,10 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         const price = parseUsdValue(eventData.price || "0");
         const notionalSize = price > 0 ? sizeUsd / price : 0;
         
-        console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+        // Only show notional size for non-liquidation events
+        if (!eventType.includes('Liquidate')) {
+          console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+        }
         console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
         console.log(`     Price: ${eventData.price || "N/A"}`);
         
@@ -675,7 +678,6 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
           const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
           console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
-          console.log(`     Total Fee: $${(fee + liquidationFee).toFixed(2)}`);
         }
         
         // Add collateral information for relevant events - simplified
@@ -686,17 +688,13 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
       } 
       // For pre-swap events
       else if (eventType === 'IncreasePositionPreSwapEvent') {
-        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
         console.log(`     Transfer Amount: ${eventData.transferAmount || 'N/A'}`);
-        
-        // Display pre-swap amount if available
-        if (eventData.collateralCustodyPreSwapAmount) 
-          console.log(`     Pre-Swap Amount: ${eventData.collateralCustodyPreSwapAmount}`);
       }
       // For post-swap events
       else if (eventType === 'DecreasePositionPostSwapEvent') {
-        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
         console.log(`     Swap Amount: ${eventData.swapAmount || 'N/A'}`);
         
