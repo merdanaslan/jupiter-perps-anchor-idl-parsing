@@ -200,7 +200,7 @@ export async function getPositionEvents() {
   
   console.log(`Found ${allEvents.length} total events`);
   
-  // Filter to only return increase position events
+  // Filter to only return position events
   const filteredEvents = allEvents.filter(
     (data) =>
       data?.event?.name === "IncreasePositionEvent" ||
@@ -211,7 +211,8 @@ export async function getPositionEvents() {
       data?.event?.name === "IncreasePositionPreSwapEvent" ||
       data?.event?.name === "DecreasePositionPreSwapEvent" ||
       data?.event?.name === "InstantCreateTpslEvent" ||
-      data?.event?.name === "InstantUpdateTpslEvent" 
+      data?.event?.name === "InstantUpdateTpslEvent" ||
+      data?.event?.name === "SwapEvent"
   );
   
   console.log(`Found ${filteredEvents.length} relevant position events`);
@@ -241,8 +242,8 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     return aTime - bTime;
   });
 
-  // Filter to keep only execution events (not request events or pre-swap events)
-  const executionEvents = sortedEvents.filter(evt => 
+  // Create an array of execution events (only the main position events)
+  const positionEvents = sortedEvents.filter(evt => 
     evt.event?.name === 'IncreasePositionEvent' ||
     evt.event?.name === 'DecreasePositionEvent' ||
     evt.event?.name === 'InstantIncreasePositionEvent' ||
@@ -250,13 +251,27 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     evt.event?.name === 'LiquidateFullPositionEvent'
   );
 
+  // Create a map to associate auxiliary events (pre-swap, swap) with position events by timestamp
+  const eventsByTimestamp: Map<string, EventWithTx[]> = new Map();
+  
+  // Group all events by their timestamp
+  sortedEvents.forEach(evt => {
+    if (evt.tx.blockTime) {
+      const key = evt.tx.blockTime;
+      if (!eventsByTimestamp.has(key)) {
+        eventsByTimestamp.set(key, []);
+      }
+      eventsByTimestamp.get(key)?.push(evt);
+    }
+  });
+
   // Maps to track active trades and lifecycle counters
   const activeTrades: Map<string, ITrade> = new Map();
   const completedTrades: ITrade[] = [];
   const lifecycleCounters: Map<string, number> = new Map();
 
   // Process each execution event
-  for (const eventWithTx of executionEvents) {
+  for (const eventWithTx of positionEvents) {
     // Skip null events
     if (!eventWithTx.event) continue;
     
@@ -276,6 +291,9 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
 
     // Check if we have an active trade for this position
     const activeTrade = activeTrades.get(tradeId);
+
+    // Get all events with the same timestamp to include auxiliary events
+    const allEventsAtTimestamp = eventsByTimestamp.get(tx.blockTime || '') || [];
 
     // Process based on event type
     if (name === 'IncreasePositionEvent' || name === 'InstantIncreasePositionEvent') {
@@ -305,8 +323,11 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
           leverage: sizeUsdDelta / collateralUsdDelta,
           totalFees: fee, // Track initial fee
           openTime: tx.blockTime,
-          events: [eventWithTx],
+          events: [],
         };
+        
+        // Add all events with the same timestamp (including preswap and swap events)
+        newTrade.events = allEventsAtTimestamp;
         
         activeTrades.set(tradeId, newTrade);
       } else {
@@ -320,7 +341,21 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
         activeTrade.collateralUsd = newCollateralUsd;
         activeTrade.leverage = newSizeUsd / newCollateralUsd;
         activeTrade.totalFees = (activeTrade.totalFees || 0) + fee; // Add to total fees
-        activeTrade.events.push(eventWithTx);
+        
+        // Add all events from this timestamp that aren't already in the trade's events
+        allEventsAtTimestamp.forEach(evt => {
+          if (evt && evt.event && evt.tx && evt.event.name) {
+            // Check if this event is already in the trade's events
+            const isDuplicate = activeTrade.events.some(existingEvt => 
+              existingEvt?.tx.signature === evt.tx?.signature && 
+              existingEvt?.event?.name === evt.event?.name
+            );
+            
+            if (!isDuplicate) {
+              activeTrade.events.push(evt);
+            }
+          }
+        });
       }
     } else if (name === 'DecreasePositionEvent' || name === 'InstantDecreasePositionEvent') {
       const sizeUsdDelta = parseUsdValue(data.sizeUsdDelta);
@@ -335,8 +370,20 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
         continue;
       }
       
-      // Add the event to the trade's events
-      activeTrade.events.push(eventWithTx);
+      // Add all events from this timestamp
+      allEventsAtTimestamp.forEach(evt => {
+        if (evt && evt.event && evt.tx && evt.event.name) {
+          // Check if this event is already in the trade's events
+          const isDuplicate = activeTrade.events.some(existingEvt => 
+            existingEvt?.tx.signature === evt.tx?.signature && 
+            existingEvt?.event?.name === evt.event?.name
+          );
+          
+          if (!isDuplicate) {
+            activeTrade.events.push(evt);
+          }
+        }
+      });
       
       // Update the trade with the latest data
       activeTrade.exitPrice = price;
@@ -372,6 +419,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       const price = parseUsdValue(data.price);
       const pnlDelta = parseUsdValue(data.pnlDelta);
       const fee = parseUsdValue(data.feeUsd || '0');  // Extract fee from liquidation event
+      const liquidationFee = parseUsdValue(data.liquidationFeeUsd || '0');
       
       if (!activeTrade) {
         // We have a liquidation event but no matching active trade
@@ -379,14 +427,28 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
         continue;
       }
       
+      // Add all events from this timestamp
+      allEventsAtTimestamp.forEach(evt => {
+        if (evt && evt.event && evt.tx && evt.event.name) {
+          // Check if this event is already in the trade's events
+          const isDuplicate = activeTrade.events.some(existingEvt => 
+            existingEvt?.tx.signature === evt.tx?.signature && 
+            existingEvt?.event?.name === evt.event?.name
+          );
+          
+          if (!isDuplicate) {
+            activeTrade.events.push(evt);
+          }
+        }
+      });
+      
       // Update the trade with liquidation data
-      activeTrade.events.push(eventWithTx);
       activeTrade.status = "liquidated";
       activeTrade.exitPrice = price;
       activeTrade.closeTime = tx.blockTime;
       activeTrade.pnl = (activeTrade.pnl || 0) + pnlDelta;
       activeTrade.hasProfit = data.hasProfit;
-      activeTrade.totalFees = (activeTrade.totalFees || 0) + fee;  // Add liquidation fee to total
+      activeTrade.totalFees = (activeTrade.totalFees || 0) + fee + liquidationFee;  // Add liquidation fee to total
       
       // Store the maximum size the position reached
       activeTrade.finalSize = activeTrade.maxSize || activeTrade.sizeUsd;
@@ -406,8 +468,18 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     }
   }
 
+  // Sort events chronologically within each trade
+  const sortTradeEvents = (trade: ITrade) => {
+    trade.events.sort((a, b) => {
+      const aTime = a?.tx.blockTime ? new Date(a.tx.blockTime).getTime() : 0;
+      const bTime = b?.tx.blockTime ? new Date(b.tx.blockTime).getTime() : 0;
+      return aTime - bTime;
+    });
+    return trade;
+  };
+
   // Convert maps to arrays for return
-  const activeTradesArray = Array.from(activeTrades.values());
+  const activeTradesArray = Array.from(activeTrades.values()).map(sortTradeEvents);
   
   // Sort completed trades by recency (newest first)
   completedTrades.sort((a, b) => {
@@ -418,7 +490,7 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
   
   return {
     activeTrades: activeTradesArray,
-    completedTrades: completedTrades,
+    completedTrades: completedTrades.map(sortTradeEvents),
   };
 }
 
@@ -538,43 +610,134 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
       const eventType = evt.event.name;
       const eventTime = evt.tx.blockTime || "Unknown";
       
-      // Determine if buy or sell
-      let action = "";
-      if (eventType.includes('Increase')) {
-        action = trade.positionSide === "Long" ? "Buy" : "Sell";
-      } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
-        action = trade.positionSide === "Long" ? "Sell" : "Buy";
-      }
-      
-      // Determine if market or limit based on positionRequestType and event name
-      let orderType = "Market"; // Default to Market
-      if (eventType.includes('Instant')) {
-        // All Instant events are market orders by definition
-        orderType = "Market";
-      } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
-        // For non-Instant events, check positionRequestType if available
-        if (eventData.positionRequestType !== undefined) {
-          orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+      // For swap events
+      if (eventType === 'SwapEvent') {
+        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`     Date: ${eventTime}`);
+        console.log(`     AMM: ${eventData.amm || 'Unknown'}`);
+        console.log(`     Input Mint: ${eventData.inputMint || 'Unknown'}`);
+        console.log(`     Input Amount: ${eventData.inputAmount || '0'}`);
+        console.log(`     Output Mint: ${eventData.outputMint || 'Unknown'}`);
+        console.log(`     Output Amount: ${eventData.outputAmount || '0'}`);
+        
+        // Calculate conversion rate if both amounts are available
+        if (eventData.inputAmount && eventData.outputAmount) {
+          const inputAmount = Number(eventData.inputAmount);
+          const outputAmount = Number(eventData.outputAmount);
+          
+          if (inputAmount > 0) {
+            // Convert to standard token amounts assuming 6 and 9 decimals for USDC and SOL
+            const inputDecimals = eventData.inputMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 6 : 9;
+            const outputDecimals = eventData.outputMint === "So11111111111111111111111111111111111111112" ? 9 : 6;
+            
+            const inputToken = inputAmount / Math.pow(10, inputDecimals);
+            const outputToken = outputAmount / Math.pow(10, outputDecimals);
+            
+            const rate = outputToken / inputToken;
+            console.log(`     Rate: ${rate.toFixed(6)} ${eventData.outputMint === "So11111111111111111111111111111111111111112" ? 'SOL' : 'USDC'} per ${eventData.inputMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 'USDC' : 'SOL'}`);
+          }
         }
-      } else if (eventType.includes('Liquidate')) {
-        // Liquidations are always forced market orders
-        orderType = "Market";
       }
-      
-      // Get sizes
-      const sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
-      const price = parseUsdValue(eventData.price || "0");
-      const notionalSize = price > 0 ? sizeUsd / price : 0;
-      const fee = parseUsdValue(eventData.feeUsd || "0");
-      
-      console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
-      console.log(`     Date: ${eventTime}`);
-      console.log(`     Action: ${action}`);
-      console.log(`     Type: ${orderType}`);
-      console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
-      console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
-      console.log(`     Price: ${eventData.price || "N/A"}`);
-      console.log(`     Fee: $${fee.toFixed(2)}`);
+      // For regular events (not pre-swap)
+      else if (!eventType.includes('PreSwap')) {
+        // Determine if buy or sell
+        let action = "";
+        if (eventType.includes('Increase')) {
+          action = trade.positionSide === "Long" ? "Buy" : "Sell";
+        } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+          action = trade.positionSide === "Long" ? "Sell" : "Buy";
+        }
+        
+        // Determine if market or limit based on positionRequestType and event name
+        let orderType = "Market"; // Default to Market
+        if (eventType.includes('Instant')) {
+          // All Instant events are market orders by definition
+          orderType = "Market";
+        } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+          // For non-Instant events, check positionRequestType if available
+          if (eventData.positionRequestType !== undefined) {
+            orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+          }
+        } else if (eventType.includes('Liquidate')) {
+          // Liquidations are always forced market orders
+          orderType = "Market";
+        }
+        
+        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`     Date: ${eventTime}`);
+        console.log(`     Action: ${action}`);
+        console.log(`     Type: ${orderType}`);
+        
+        // Display collateral mint information
+        if (eventData.positionMint) {
+          console.log(`     Position Mint: ${eventData.positionMint}`);
+        }
+        if (eventData.positionRequestMint) {
+          console.log(`     Request Mint: ${eventData.positionRequestMint}`);
+        }
+        
+        // Get sizes - with special handling for liquidation events
+        let sizeUsd = 0;
+        if (eventType.includes('Liquidate')) {
+          // For liquidation events, use positionSizeUsd instead of sizeUsdDelta
+          sizeUsd = parseUsdValue(eventData.positionSizeUsd || "0");
+        } else {
+          sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
+        }
+        
+        const price = parseUsdValue(eventData.price || "0");
+        const notionalSize = price > 0 ? sizeUsd / price : 0;
+        
+        console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+        console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
+        console.log(`     Price: ${eventData.price || "N/A"}`);
+        
+        // Handle fees display - with special handling for liquidation events
+        const fee = parseUsdValue(eventData.feeUsd || "0");
+        console.log(`     Fee: $${fee.toFixed(2)}`);
+        
+        if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
+          const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
+          console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
+          console.log(`     Total Fee: $${(fee + liquidationFee).toFixed(2)}`);
+        }
+        
+        // Add collateral information for relevant events - simplified
+        if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+          const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
+          console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
+        }
+      } 
+      // For pre-swap events
+      else if (eventType === 'IncreasePositionPreSwapEvent' || eventType === 'DecreasePositionPreSwapEvent') {
+        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`     Date: ${eventTime}`);
+        console.log(`     Transfer Amount: ${eventData.transferAmount}`);
+        console.log(`     Pre-Swap Amount: ${eventData.collateralCustodyPreSwapAmount}`);
+        
+        // Find the matching execution event to calculate slippage
+        const executionEvent = trade.events.find(e => 
+          e?.event?.name.includes('IncreasePosition') && 
+          !e?.event?.name.includes('PreSwap') &&
+          e?.tx.blockTime === eventTime
+        );
+        
+        if (executionEvent?.event) {
+          const execData = executionEvent.event.data;
+          const requestCollatDelta = execData.positionRequestCollateralDelta ? 
+            Number(execData.positionRequestCollateralDelta) / 1_000_000 : 0;
+          const actualCollatDelta = parseUsdValue(execData.collateralUsdDelta || "0");
+          
+          if (requestCollatDelta > 0 && actualCollatDelta > 0) {
+            const slippageAmount = requestCollatDelta - actualCollatDelta;
+            const slippagePercent = (slippageAmount / requestCollatDelta) * 100;
+            
+            console.log(`     Requested Amount: $${requestCollatDelta.toFixed(2)}`);
+            console.log(`     Actual Amount: $${actualCollatDelta.toFixed(2)}`);
+            console.log(`     Slippage: $${slippageAmount.toFixed(2)} (${slippagePercent.toFixed(2)}%)`);
+          }
+        }
+      }
     }
   });
 }
