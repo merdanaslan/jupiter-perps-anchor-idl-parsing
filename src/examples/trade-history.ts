@@ -166,6 +166,11 @@ export async function getPositionEvents() {
             );
             const decodedEvent = JUPITER_PERPETUALS_PROGRAM.coder.events.decode(eventData);
             
+            // Debugging: Log event names
+            if (decodedEvent) {
+              console.log(`Found event: ${decodedEvent.name}`);
+            }
+            
             // Format the event data for human readability
             const formattedEvent = formatEventData(decodedEvent);
             
@@ -209,10 +214,9 @@ export async function getPositionEvents() {
       data?.event?.name === "InstantDecreasePositionEvent" ||
       data?.event?.name === "LiquidateFullPositionEvent" ||
       data?.event?.name === "IncreasePositionPreSwapEvent" ||
-      data?.event?.name === "DecreasePositionPreSwapEvent" ||
+      data?.event?.name === "DecreasePositionPostSwapEvent" ||
       data?.event?.name === "InstantCreateTpslEvent" ||
-      data?.event?.name === "InstantUpdateTpslEvent" ||
-      data?.event?.name === "SwapEvent"
+      data?.event?.name === "InstantUpdateTpslEvent"
   );
   
   console.log(`Found ${filteredEvents.length} relevant position events`);
@@ -610,36 +614,8 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
       const eventType = evt.event.name;
       const eventTime = evt.tx.blockTime || "Unknown";
       
-      // For swap events
-      if (eventType === 'SwapEvent') {
-        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
-        console.log(`     Date: ${eventTime}`);
-        console.log(`     AMM: ${eventData.amm || 'Unknown'}`);
-        console.log(`     Input Mint: ${eventData.inputMint || 'Unknown'}`);
-        console.log(`     Input Amount: ${eventData.inputAmount || '0'}`);
-        console.log(`     Output Mint: ${eventData.outputMint || 'Unknown'}`);
-        console.log(`     Output Amount: ${eventData.outputAmount || '0'}`);
-        
-        // Calculate conversion rate if both amounts are available
-        if (eventData.inputAmount && eventData.outputAmount) {
-          const inputAmount = Number(eventData.inputAmount);
-          const outputAmount = Number(eventData.outputAmount);
-          
-          if (inputAmount > 0) {
-            // Convert to standard token amounts assuming 6 and 9 decimals for USDC and SOL
-            const inputDecimals = eventData.inputMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 6 : 9;
-            const outputDecimals = eventData.outputMint === "So11111111111111111111111111111111111111112" ? 9 : 6;
-            
-            const inputToken = inputAmount / Math.pow(10, inputDecimals);
-            const outputToken = outputAmount / Math.pow(10, outputDecimals);
-            
-            const rate = outputToken / inputToken;
-            console.log(`     Rate: ${rate.toFixed(6)} ${eventData.outputMint === "So11111111111111111111111111111111111111112" ? 'SOL' : 'USDC'} per ${eventData.inputMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 'USDC' : 'SOL'}`);
-          }
-        }
-      }
       // For regular events (not pre-swap)
-      else if (!eventType.includes('PreSwap')) {
+      if (!eventType.includes('PreSwap') && !eventType.includes('PostSwap')) {
         // Determine if buy or sell
         let action = "";
         if (eventType.includes('Increase')) {
@@ -709,34 +685,23 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         }
       } 
       // For pre-swap events
-      else if (eventType === 'IncreasePositionPreSwapEvent' || eventType === 'DecreasePositionPreSwapEvent') {
+      else if (eventType === 'IncreasePositionPreSwapEvent') {
         console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
         console.log(`     Date: ${eventTime}`);
-        console.log(`     Transfer Amount: ${eventData.transferAmount}`);
-        console.log(`     Pre-Swap Amount: ${eventData.collateralCustodyPreSwapAmount}`);
+        console.log(`     Transfer Amount: ${eventData.transferAmount || 'N/A'}`);
         
-        // Find the matching execution event to calculate slippage
-        const executionEvent = trade.events.find(e => 
-          e?.event?.name.includes('IncreasePosition') && 
-          !e?.event?.name.includes('PreSwap') &&
-          e?.tx.blockTime === eventTime
-        );
+        // Display pre-swap amount if available
+        if (eventData.collateralCustodyPreSwapAmount) 
+          console.log(`     Pre-Swap Amount: ${eventData.collateralCustodyPreSwapAmount}`);
+      }
+      // For post-swap events
+      else if (eventType === 'DecreasePositionPostSwapEvent') {
+        console.log(`  ${i+1}. ${eventType} at ${eventTime}`);
+        console.log(`     Date: ${eventTime}`);
+        console.log(`     Swap Amount: ${eventData.swapAmount || 'N/A'}`);
         
-        if (executionEvent?.event) {
-          const execData = executionEvent.event.data;
-          const requestCollatDelta = execData.positionRequestCollateralDelta ? 
-            Number(execData.positionRequestCollateralDelta) / 1_000_000 : 0;
-          const actualCollatDelta = parseUsdValue(execData.collateralUsdDelta || "0");
-          
-          if (requestCollatDelta > 0 && actualCollatDelta > 0) {
-            const slippageAmount = requestCollatDelta - actualCollatDelta;
-            const slippagePercent = (slippageAmount / requestCollatDelta) * 100;
-            
-            console.log(`     Requested Amount: $${requestCollatDelta.toFixed(2)}`);
-            console.log(`     Actual Amount: $${actualCollatDelta.toFixed(2)}`);
-            console.log(`     Slippage: $${slippageAmount.toFixed(2)} (${slippagePercent.toFixed(2)}%)`);
-          }
-        }
+        if (eventData.jupiterMinimumOut)
+          console.log(`     Jupiter Minimum Out: ${eventData.jupiterMinimumOut}`);
       }
     }
   });
