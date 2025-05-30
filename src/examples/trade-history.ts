@@ -605,8 +605,92 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
   );
   
   if (firstEvent?.event?.data) {
-    const collateralMint = firstEvent.event.data.positionCollateralCustody;
-    console.log(`Collateral Token: ${getAssetNameFromCustody(collateralMint)}`);
+    const collateralCustody = firstEvent.event.data.positionCollateralCustody;
+    console.log(`Collateral Token: ${getAssetNameFromCustody(collateralCustody)}`);
+  }
+  
+  // Check for swaps in the trade
+  const hasOpeningSwap = trade.events.some(evt => evt?.event?.name === 'IncreasePositionPreSwapEvent');
+  const hasClosingSwap = trade.events.some(evt => evt?.event?.name === 'DecreasePositionPostSwapEvent');
+  
+  // Add token comparison detection for swaps
+  const firstIncreaseEvent = trade.events.find(evt => 
+    evt?.event?.name === 'IncreasePositionEvent' || 
+    evt?.event?.name === 'InstantIncreasePositionEvent'
+  );
+
+  const lastDecreaseEvent = trade.events.find(evt => 
+    (evt?.event?.name === 'DecreasePositionEvent' || 
+    evt?.event?.name === 'InstantDecreasePositionEvent' ||
+    evt?.event?.name === 'LiquidateFullPositionEvent') &&
+    (trade.status !== "active")
+  );
+
+  let swapDetectedByTokens = false;
+  let openingSwapByTokens = false;
+  let closingSwapByTokens = false;
+
+  // Check for opening swap by comparing tokens
+  if (firstIncreaseEvent?.event?.data) {
+    const data = firstIncreaseEvent.event.data;
+    const collateralCustody = data.positionCollateralCustody;
+    const requestMint = data.positionRequestMint;
+    
+    // Only compare if both values are defined
+    if (collateralCustody && requestMint) {
+      // For longs: if input token differs from collateral token
+      // For shorts: if input token is not USDC/USDT
+      if (data.positionSide === "Long") {
+        // For longs, the collateral token and request mint should be the same if no swap
+        openingSwapByTokens = getAssetNameFromCustody(collateralCustody) !== getSymbolFromMint(requestMint);
+      } else {
+        // For shorts, the request mint should be USDC or USDT if no swap
+        const requestSymbol = getSymbolFromMint(requestMint);
+        openingSwapByTokens = requestSymbol !== "USDC" && requestSymbol !== "USDT";
+      }
+    }
+  }
+
+  // Check for closing swap by comparing tokens
+  if (lastDecreaseEvent?.event?.data) {
+    const data = lastDecreaseEvent.event.data;
+    const collateralCustody = data.positionCollateralCustody;
+    const requestMint = data.positionRequestMint;
+    
+    if (collateralCustody && requestMint) {
+      // If collateral custody differs from request mint, a swap occurred
+      closingSwapByTokens = getAssetNameFromCustody(collateralCustody) !== getSymbolFromMint(requestMint);
+    }
+  }
+
+  swapDetectedByTokens = openingSwapByTokens || closingSwapByTokens;
+
+  // Combine both detection methods
+  const swapsDetected = hasOpeningSwap || hasClosingSwap || swapDetectedByTokens;
+  const openingSwaps = hasOpeningSwap || openingSwapByTokens;
+  const closingSwaps = hasClosingSwap || closingSwapByTokens;
+
+  if (swapsDetected) {
+    console.log(`Swaps: ${openingSwaps ? 'Opening' : ''}${openingSwaps && closingSwaps ? ' and ' : ''}${closingSwaps ? 'Closing' : ''}`);
+    
+    // Additional debug info if tokens suggest swaps but events don't
+    if (swapDetectedByTokens && !(hasOpeningSwap || hasClosingSwap)) {
+      console.log(`  (Detected by token comparison)`);
+      
+      if (openingSwapByTokens && firstIncreaseEvent?.event?.data) {
+        const data = firstIncreaseEvent.event.data;
+        if (data.positionRequestMint && data.positionCollateralCustody) {
+          console.log(`  Opening: ${getSymbolFromMint(data.positionRequestMint)} → ${getAssetNameFromCustody(data.positionCollateralCustody)}`);
+        }
+      }
+      
+      if (closingSwapByTokens && lastDecreaseEvent?.event?.data) {
+        const data = lastDecreaseEvent.event.data;
+        if (data.positionCollateralCustody && data.positionRequestMint) {
+          console.log(`  Closing: ${getAssetNameFromCustody(data.positionCollateralCustody)} → ${getSymbolFromMint(data.positionRequestMint)}`);
+        }
+      }
+    }
   }
   
   // Add payout information for closed/liquidated positions
@@ -712,12 +796,12 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         // Display token information
         if (eventData.positionMint) {
           const symbol = getSymbolFromMint(eventData.positionMint);
-          console.log(`     Trading: ${symbol} (${eventData.positionMint.substring(0, 8)}...)`);
+          console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
         }
         
         if (eventData.positionRequestMint) {
           const symbol = getSymbolFromMint(eventData.positionRequestMint);
-          console.log(`     Using: ${symbol} (${eventData.positionRequestMint.substring(0, 8)}...)`);
+          console.log(`     Using: ${symbol}${eventData.positionRequestMint ? ` (${eventData.positionRequestMint.substring(0, 8)}...)` : ''}`);
         }
         
         // Get sizes - with special handling for liquidation events
@@ -808,7 +892,9 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
           const requestMint = increaseEvent.event.data.positionRequestMint;
           const collateralCustody = increaseEvent.event.data.positionCollateralCustody;
           
-          console.log(`     Swapped: ${getSymbolFromMint(requestMint)} → ${getAssetNameFromCustody(collateralCustody)}`);
+          if (requestMint && collateralCustody) {
+            console.log(`     Swapped: ${getSymbolFromMint(requestMint)} → ${getAssetNameFromCustody(collateralCustody)}`);
+          }
         }
       }
       // For post-swap events
@@ -838,7 +924,12 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
 }
 
 // Helper function to get token symbol from mint address
-function getSymbolFromMint(mintAddress: string): string {
+function getSymbolFromMint(mintAddress: string | undefined): string {
+  // Check if mintAddress is undefined or null
+  if (!mintAddress) {
+    return "Unknown";
+  }
+  
   // Common token addresses
   switch(mintAddress) {
     case "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":
@@ -855,7 +946,11 @@ function getSymbolFromMint(mintAddress: string): string {
 }
 
 // Add helper function to get asset name from custody pubkey if not already present
-function getAssetNameFromCustody(custodyPubkey: string): string {
+function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
+  if (!custodyPubkey) {
+    return "Unknown";
+  }
+  
   switch(custodyPubkey) {
     case CUSTODY_PUBKEY.SOL:
       return "SOL";
