@@ -151,7 +151,7 @@ function generateAllPositionPdas(walletAddress: string) {
 }
 
 // Run for the specified wallet
-generateAllPositionPdas("EFhwg89LrkffzvyiJ2AM1rPPRxguDmBXj6JHe2kRu4wq");
+generateAllPositionPdas("63A99xoxxUVBm8VUguBcJZbYWDLi9AjYvYtB16xWqCzw");
 
 // DEaGQpCsnZDgvsZ3WdLgUSRAJP3Nv28DsGipLPgopdvb small wallet used for testing
 // 4qXroAUadM5akVdBrt6ZNL3iRLVE3YboCF5TiKkFsZSp large wallet used for testing

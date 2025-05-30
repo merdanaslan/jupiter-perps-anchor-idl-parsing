@@ -113,7 +113,7 @@ function formatEventData(event: any): any {
 // This function shows how to listen to these onchain events and parse / filter them.
 export async function getPositionEvents() {
   // Use specific position PDA
-  const positionPDA = new PublicKey("3FCyHP3VcruHn4PptfR9rJe3faJFGPpQqH16aBVSzwKW");
+  const positionPDA = new PublicKey("5SfkpnZZPRcGAX8g3U3DYFTvZUUyK4e5ULvyWy1r7Vki");
   
   // Maximum transaction signatures to return (between 1 and 1,000).
   console.log("Getting signatures...");
@@ -598,6 +598,71 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
     console.log(`Profitable: ${trade.hasProfit ? "Yes" : "No"}`);
   }
   
+  // Add token information for the position
+  const firstEvent = trade.events.find(evt => 
+    evt?.event?.name === 'IncreasePositionEvent' || 
+    evt?.event?.name === 'InstantIncreasePositionEvent'
+  );
+  
+  if (firstEvent?.event?.data) {
+    const collateralMint = firstEvent.event.data.positionCollateralCustody;
+    console.log(`Collateral Token: ${getAssetNameFromCustody(collateralMint)}`);
+  }
+  
+  // Add payout information for closed/liquidated positions
+  if (trade.status !== "active") {
+    const lastEvent = trade.events.find(evt => 
+      evt?.event?.name === 'DecreasePositionEvent' || 
+      evt?.event?.name === 'InstantDecreasePositionEvent' ||
+      evt?.event?.name === 'LiquidateFullPositionEvent'
+    );
+    
+    if (lastEvent?.event?.data) {
+      const data = lastEvent.event.data;
+      
+      if (data.transferAmountUsd) {
+        console.log(`Payout (USD): $${parseUsdValue(data.transferAmountUsd).toFixed(2)}`);
+      }
+      
+      if (data.transferToken) {
+        const tokenAmount = Number(data.transferToken);
+        const requestMint = data.positionRequestMint || data.desiredMint;
+        let tokenSymbol = "Unknown";
+        let decimals = 6; // Default to 6 decimals (USDC)
+        
+        // Try to determine token symbol and decimals
+        if (requestMint) {
+          // Known token addresses
+          if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+            tokenSymbol = "USDC";
+            decimals = 6;
+          } else if (requestMint === "So11111111111111111111111111111111111111112") {
+            tokenSymbol = "SOL";
+            decimals = 9;
+          } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
+            tokenSymbol = "WETH";
+            decimals = 8;
+          }
+        }
+        
+        const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
+        console.log(`Payout (Token): ${formattedAmount} ${tokenSymbol}`);
+        
+        // If we have both USD and token amounts, calculate implied swap fee
+        if (data.transferAmountUsd && parseUsdValue(data.transferAmountUsd) > 0) {
+          const usdAmount = parseUsdValue(data.transferAmountUsd);
+          const tokenInUsd = tokenAmount / Math.pow(10, decimals);
+          
+          // If there's a significant difference, it might indicate swap fees
+          if (Math.abs(usdAmount - tokenInUsd) > 0.1 && tokenSymbol === "USDC") {
+            const impliedFee = usdAmount - tokenInUsd;
+            console.log(`Implied Swap Fee: $${impliedFee.toFixed(2)} (${(impliedFee/usdAmount*100).toFixed(2)}%)`);
+          }
+        }
+      }
+    }
+  }
+  
   console.log(`Opened: ${trade.openTime}`);
   
   if (trade.closeTime) {
@@ -644,12 +709,15 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         console.log(`     Action: ${action}`);
         console.log(`     Type: ${orderType}`);
         
-        // Display collateral mint information
+        // Display token information
         if (eventData.positionMint) {
-          console.log(`     Position Mint: ${eventData.positionMint}`);
+          const symbol = getSymbolFromMint(eventData.positionMint);
+          console.log(`     Trading: ${symbol} (${eventData.positionMint.substring(0, 8)}...)`);
         }
+        
         if (eventData.positionRequestMint) {
-          console.log(`     Request Mint: ${eventData.positionRequestMint}`);
+          const symbol = getSymbolFromMint(eventData.positionRequestMint);
+          console.log(`     Using: ${symbol} (${eventData.positionRequestMint.substring(0, 8)}...)`);
         }
         
         // Get sizes - with special handling for liquidation events
@@ -671,6 +739,38 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
         console.log(`     Price: ${eventData.price || "N/A"}`);
         
+        // Add payout information for decrease/liquidation events
+        if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+          if (eventData.transferAmountUsd) {
+            console.log(`     Payout (USD): $${parseUsdValue(eventData.transferAmountUsd).toFixed(2)}`);
+          }
+          
+          if (eventData.transferToken) {
+            const tokenAmount = Number(eventData.transferToken);
+            const requestMint = eventData.positionRequestMint || eventData.desiredMint;
+            let tokenSymbol = "Unknown";
+            let decimals = 6; // Default to 6 decimals (USDC)
+            
+            // Try to determine token symbol and decimals
+            if (requestMint) {
+              // Known token addresses
+              if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+                tokenSymbol = "USDC";
+                decimals = 6;
+              } else if (requestMint === "So11111111111111111111111111111111111111112") {
+                tokenSymbol = "SOL";
+                decimals = 9;
+              } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
+                tokenSymbol = "WETH";
+                decimals = 8;
+              }
+            }
+            
+            const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
+            console.log(`     Payout (Token): ${formattedAmount} ${tokenSymbol}`);
+          }
+        }
+        
         // Handle fees display - with special handling for liquidation events
         const fee = parseUsdValue(eventData.feeUsd || "0");
         console.log(`     Fee: $${fee.toFixed(2)}`);
@@ -685,12 +785,31 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
           const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
           console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
         }
+        
+        // Show profit/loss information for decrease events
+        if ((eventType.includes('Decrease') || eventType.includes('Liquidate')) && eventData.pnlDelta) {
+          const pnlDelta = parseUsdValue(eventData.pnlDelta);
+          console.log(`     PnL: $${pnlDelta.toFixed(2)} (${eventData.hasProfit ? 'Profit' : 'Loss'})`);
+        }
       } 
       // For pre-swap events
       else if (eventType === 'IncreasePositionPreSwapEvent') {
         console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
         console.log(`     Transfer Amount: ${eventData.transferAmount || 'N/A'}`);
+        
+        // Find the corresponding increase event to show what tokens were swapped
+        const increaseEvent = trade.events.find(e => 
+          (e?.event?.name === 'IncreasePositionEvent' || e?.event?.name === 'InstantIncreasePositionEvent') && 
+          e?.tx.blockTime === eventTime
+        );
+        
+        if (increaseEvent?.event?.data) {
+          const requestMint = increaseEvent.event.data.positionRequestMint;
+          const collateralCustody = increaseEvent.event.data.positionCollateralCustody;
+          
+          console.log(`     Swapped: ${getSymbolFromMint(requestMint)} → ${getAssetNameFromCustody(collateralCustody)}`);
+        }
       }
       // For post-swap events
       else if (eventType === 'DecreasePositionPostSwapEvent') {
@@ -700,9 +819,39 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
         
         if (eventData.jupiterMinimumOut)
           console.log(`     Jupiter Minimum Out: ${eventData.jupiterMinimumOut}`);
+        
+        // Find the corresponding decrease event to show what tokens were swapped
+        const decreaseEvent = trade.events.find(e => 
+          (e?.event?.name === 'DecreasePositionEvent' || e?.event?.name === 'InstantDecreasePositionEvent') && 
+          e?.tx.blockTime === eventTime
+        );
+        
+        if (decreaseEvent?.event?.data) {
+          const collateralCustody = decreaseEvent.event.data.positionCollateralCustody;
+          const requestMint = decreaseEvent.event.data.positionRequestMint;
+          
+          console.log(`     Swapped: ${getAssetNameFromCustody(collateralCustody)} → ${getSymbolFromMint(requestMint)}`);
+        }
       }
     }
   });
+}
+
+// Helper function to get token symbol from mint address
+function getSymbolFromMint(mintAddress: string): string {
+  // Common token addresses
+  switch(mintAddress) {
+    case "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":
+      return "USDC";
+    case "So11111111111111111111111111111111111111112":
+      return "SOL";
+    case "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs":
+      return "WETH";
+    case "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh":
+      return "wBTC";
+    default:
+      return mintAddress.substring(0, 6) + "...";
+  }
 }
 
 // Add helper function to get asset name from custody pubkey if not already present

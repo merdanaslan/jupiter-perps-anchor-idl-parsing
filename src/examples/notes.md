@@ -558,6 +558,64 @@ The meanings of the positionRequestType values and other field interpretations a
 
 These interpretations are not explicitly documented in the IDL itself, as the IDL only defines the data structure but not the semantic meaning of enum values. 
 
+## Field Definitions and Meanings
+
+When analyzing position events, it's important to understand the meaning of key fields:
+
+### Position Fields
+
+- **positionRequestMint**: The token mint address you're using for the position request. When opening, it's what you're depositing (which might need to be swapped to the actual collateral token). When closing, it's what you want to receive.
+
+- **positionMint**: The token address for the token being traded (the underlying asset). For example, WETH address for ETH positions.
+
+- **positionCustody**: The custody account for the asset you're trading (e.g., ETH custody account).
+
+- **positionCollateralCustody**: The custody account for the collateral token backing your position.
+
+- **positionSide**: Indicates whether the position is Long (1) or Short (0).
+
+### Transfer and Payout Fields
+
+- **transferAmountUsd**: The total USD value being withdrawn from the position during a decrease or liquidation. It includes both the collateral and any profit (or loss). It's essentially the "cash out" amount in USD terms.
+
+- **transferToken**: The actual amount of tokens being transferred to the user, denominated in the token's smallest units (e.g., microUSDC for USDC). For DecreasePositionEvent, it's optional because not all decrease operations result in token transfers. For LiquidateFullPositionEvent, it's always present as liquidations always result in a token transfer.
+
+- **pnlDelta**: The profit or loss realized in this specific decrease/liquidation event in USD terms.
+
+- **hasProfit**: Boolean indicating whether the position decrease resulted in profit (true) or loss (false).
+
+### Fee Fields
+
+- **feeUsd**: The transaction fee paid in USD terms for this position change.
+
+- **liquidationFeeUsd**: Additional fee charged during liquidations.
+
+### Trade Data Fields
+
+- **sizeUsdDelta**: The amount by which the position size changed in USD terms.
+
+- **price**: The execution price for the position change.
+
+- **priceSlippage**: The price after accounting for slippage.
+
+- **collateralUsdDelta**: The change in collateral amount in USD terms.
+
+- **collateralTokenDelta**: The change in collateral amount in token units.
+
+### Swap-Related Fields
+
+- **transferAmount**: In PreSwapEvent, the amount of tokens being sent for the swap.
+
+- **swapAmount**: In PostSwapEvent, the amount of tokens being swapped.
+
+- **jupiterMinimumOut**: The minimum amount expected to receive from a swap operation.
+
+## Understanding Events and Position Lifecycle
+
+When tracking positions via events, the system uses a combination of position key and a "lifecycle counter" to create unique trade IDs. A new trade lifecycle begins with an increase event for a position key that hasn't been seen before or was previously closed. 
+
+The completion of a position is determined by checking if the `positionSizeUsd` in a DecreasePositionEvent equals zero, indicating the position is fully closed (versus partially decreased).
+
 
 
 1. add limit support
