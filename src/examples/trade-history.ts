@@ -56,6 +56,18 @@ interface ITrade {
   hasProfit?: boolean;
 }
 
+// First, update the discriminators to match the standard Anchor format
+export const TPSL_INSTRUCTION_DISCRIMINATORS = {
+  // For Anchor programs, the instruction discriminator is first 8 bytes of sha256 hash of the instruction name
+  // Try different formats for the instruction name
+  instantCreateTpsl: Buffer.from([117, 98, 66, 127, 30, 50, 73, 185]), // Known discriminator from our debug output
+  instantUpdateTpsl: Buffer.from([215, 61, 230, 134, 70, 19, 40, 15])  // Placeholder - we'll update this if we find it
+};
+
+// Remove the debug logging
+// console.log("Create TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl));
+// console.log("Update TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl));
+
 // Helper function to format event data to make it human-readable
 function formatEventData(event: any): any {
   if (!event) return null;
@@ -107,13 +119,10 @@ function formatEventData(event: any): any {
   };
 }
 
-// The Jupiter Perpetuals program emits events (via Anchor's CPI events: https://book.anchor-lang.com/anchor_in_depth/events.html)
-// for most trade events. These events can be parsed and analyzed to track things like trades, executed TPSL requests, liquidations
-// and so on.
-// This function shows how to listen to these onchain events and parse / filter them.
+// Update the getPositionEvents function to use fetchTransactionWithRetry
 export async function getPositionEvents() {
   // Use specific position PDA
-  const positionPDA = new PublicKey("5SfkpnZZPRcGAX8g3U3DYFTvZUUyK4e5ULvyWy1r7Vki");
+  const positionPDA = new PublicKey("PskXG6AudWfR419gHd96EDnmGtQWaeLrAYST1LrEua3");
   
   // Maximum transaction signatures to return (between 1 and 1,000).
   console.log("Getting signatures...");
@@ -138,7 +147,7 @@ export async function getPositionEvents() {
       continue;
     }
     
-    // Add a 5 second delay between each transaction processing
+    // Add a delay between each transaction processing to avoid rate limits
     if (i > 0) {
       console.log(`Waiting 5 seconds before processing next transaction...`);
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -147,18 +156,16 @@ export async function getPositionEvents() {
     try {
       console.log(`Processing transaction ${i+1}/${confirmedSignatureInfos.length}: ${confirmedSignatureInfos[i].signature}`);
       
-      const tx = await RPC_CONNECTION.getTransaction(
-        confirmedSignatureInfos[i].signature,
-        { commitment: "confirmed", maxSupportedTransactionVersion: 0 }
-      );
+      // Use our retry function
+      const tx = await fetchTransactionWithRetry(confirmedSignatureInfos[i].signature);
       
       if (!tx || !tx.meta || !tx.meta.innerInstructions) {
         console.log("No inner instructions found in transaction");
         continue;
       }
       
-      const txEvents = tx.meta.innerInstructions.flatMap(ix => {
-        return ix.instructions.map(iix => {
+      const txEvents = tx.meta.innerInstructions.flatMap((ix: { instructions: any[] }) => {
+        return ix.instructions.map((iix: { data: string }) => {
           try {
             const ixData = utils.bytes.bs58.decode(iix.data);
             const eventData = utils.bytes.base64.encode(
@@ -177,7 +184,7 @@ export async function getPositionEvents() {
             // Get transaction fee (safe because we already checked tx.meta != null)
             const feeInSOL = tx.meta!.fee / 1_000_000_000; // Convert lamports to SOL
             
-            return {
+            const eventWithTx = {
               event: formattedEvent,
               tx: {
                 signature: confirmedSignatureInfos[i].signature,
@@ -188,6 +195,161 @@ export async function getPositionEvents() {
                 feeInLamports: tx.meta!.fee
               }
             };
+            
+            // For TP/SL events, fetch the instruction data immediately
+            if (formattedEvent && (
+                formattedEvent.name === 'InstantCreateTpslEvent' || 
+                formattedEvent.name === 'InstantUpdateTpslEvent')
+            ) {
+              // We'll try to extract TP/SL parameters from the transaction
+              let tpslData = null;
+              try {
+                // Get all instructions in the transaction - handle versioned transactions
+                let instructions;
+                let accountKeys;
+                
+                if ('message' in tx.transaction) {
+                  const message = tx.transaction.message;
+                  
+                  // For versioned transactions
+                  if ('version' in message) {
+                    // For MessageV0
+                    instructions = message.compiledInstructions;
+                    try {
+                      // For versioned transactions with lookup tables
+                      if (tx.meta?.loadedAddresses) {
+                        // Use staticAccountKeys and loaded addresses
+                        const staticKeys = message.staticAccountKeys || [];
+                        const writableKeys = tx.meta.loadedAddresses.writable || [];
+                        const readonlyKeys = tx.meta.loadedAddresses.readonly || [];
+                        accountKeys = [...staticKeys, ...writableKeys, ...readonlyKeys];
+                      } else {
+                        accountKeys = message.staticAccountKeys || [];
+                      }
+                    } catch (err) {
+                      console.log("Error getting account keys, using static keys:", err);
+                      accountKeys = message.staticAccountKeys || [];
+                    }
+                  } else {
+                    // For legacy transactions
+                    instructions = (message as any).instructions;
+                    accountKeys = (message as any).accountKeys;
+                  }
+                }
+                
+                if (instructions && accountKeys) {
+                  // Find the TP/SL instruction
+                  for (const ix of instructions) {
+                    // Skip if no programId index
+                    if (ix.programIdIndex === undefined) continue;
+                    
+                    // Get program ID
+                    const programId = accountKeys[ix.programIdIndex];
+                    
+                    // Check if this is a Jupiter Perpetuals instruction
+                    if (programId.toString() === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
+                      // Get the instruction data
+                      const data = Buffer.from(ix.data);
+                      
+                      // Check for TP/SL instruction discriminators
+                      const discriminator = data.slice(0, 8);
+                      
+                      const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
+                      const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
+                      
+                      if (isCreateTpsl || isUpdateTpsl) {
+                        console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} instruction`);
+                        
+                        // Parse TP/SL parameters from buffer
+                        const instructionDataBuffer = data.slice(8);
+                        let offset = 0;
+                        
+                        // Read collateralUsdDelta (u64/BN)
+                        const collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                        offset += 8;
+                        
+                        // Read sizeUsdDelta (u64/BN)
+                        const sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                        offset += 8;
+                        
+                        // Read triggerPrice (u64/BN)
+                        const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                        offset += 8;
+                        
+                        // Read triggerAboveThreshold (bool) - 1 byte
+                        const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+                        offset += 1;
+                        
+                        // Read entirePosition (bool) - 1 byte
+                        const entirePosition = instructionDataBuffer[offset] === 1;
+                        offset += 1;
+                        
+                        // Read counter (u64/BN) if available
+                        let counter = new BN(0);
+                        if (offset + 8 <= instructionDataBuffer.length) {
+                          counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                        }
+                        
+                        // Read requestTime (i64/BN) if available
+                        let requestTime = new BN(0);
+                        if (offset + 8 <= instructionDataBuffer.length) {
+                          requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                        }
+                        
+                        // Create the TPSL data object - if triggerAboveThreshold is true, it's a Take Profit
+                        // If false, it's a Stop Loss
+                        tpslData = {
+                          instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
+                          params: {
+                            collateralUsdDelta,
+                            sizeUsdDelta,
+                            triggerPrice,
+                            triggerAboveThreshold,
+                            entirePosition,
+                            counter,
+                            requestTime,
+                            // For convenience, also include the interpreted values
+                            takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                            stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                            takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
+                            stopLossSizePct: entirePosition ? 10000 : 5000
+                          }
+                        };
+                        
+                        // Add TP/SL data to the event
+                        if (formattedEvent.data) {
+                          // Add to the event data
+                          if (triggerAboveThreshold) {
+                            formattedEvent.data.takeProfitPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
+                            formattedEvent.data.takeProfitSizePercent = entirePosition ? 10000 : 5000;
+                          } else {
+                            formattedEvent.data.stopLossPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
+                            formattedEvent.data.stopLossSizePercent = entirePosition ? 10000 : 5000;
+                          }
+                          
+                          // Add all raw instruction parameters to the event data
+                          formattedEvent.data.tpslInstructionData = tpslData;
+                          formattedEvent.data.tpslCollateralUsdDelta = `$${BNToUSDRepresentation(collateralUsdDelta, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslSizeUsdDelta = `$${BNToUSDRepresentation(sizeUsdDelta, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslTriggerPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslTriggerAboveThreshold = triggerAboveThreshold;
+                          formattedEvent.data.tpslEntirePosition = entirePosition;
+                          formattedEvent.data.tpslCounter = counter.toString();
+                          formattedEvent.data.tpslRequestTime = new Date(requestTime.toNumber() * 1000).toISOString();
+                        }
+                        
+                        break;
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error("Error extracting TP/SL instruction data:", error);
+              }
+            }
+            
+            return eventWithTx;
           } catch (error) {
             console.log("Failed to decode instruction data");
             return null;
@@ -222,6 +384,448 @@ export async function getPositionEvents() {
   console.log(`Found ${filteredEvents.length} relevant position events`);
   
   return filteredEvents;
+}
+
+// Implement exponential backoff for RPC requests
+async function fetchTransactionWithRetry(signature: string, maxRetries = 5): Promise<any> {
+  let retries = 0;
+  let delay = 500; // Start with 500ms delay
+  
+  while (retries < maxRetries) {
+    try {
+      return await RPC_CONNECTION.getTransaction(
+        signature,
+        { 
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0
+        }
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if it's a rate limit error
+      if (errorMessage.includes("429") || errorMessage.includes("Too Many Requests")) {
+        retries++;
+        
+        if (retries >= maxRetries) {
+          console.log(`Maximum retries (${maxRetries}) reached. Giving up.`);
+          throw error;
+        }
+        
+        // Exponential backoff with jitter
+        const jitter = Math.random() * 0.3 + 0.85; // Random between 0.85 and 1.15
+        delay = Math.min(delay * 2 * jitter, 10000); // Cap at 10 seconds
+        
+        console.log(`Rate limited. Retry ${retries}/${maxRetries} after ${Math.round(delay)}ms delay...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // For non-rate-limit errors, just throw
+        throw error;
+      }
+    }
+  }
+}
+
+/**
+ * Parse TP/SL instruction data from transaction
+ * This function fetches the transaction that contains a TP/SL event and decodes the instruction data using the IDL
+ */
+async function getTpslInstructionData(txSignature: string): Promise<any> {
+  try {
+    // Fetch the transaction with retry
+    console.log(`Fetching transaction ${txSignature} to decode TP/SL instruction data...`);
+    const tx = await fetchTransactionWithRetry(txSignature);
+    
+    if (!tx || !tx.transaction) {
+      console.log("Transaction not found or has no data");
+      return null;
+    }
+    
+    // Get all instructions in the transaction - handle versioned transactions
+    let instructions;
+    let accountKeys;
+    
+    if ('message' in tx.transaction) {
+      const message = tx.transaction.message;
+      
+      // For versioned transactions
+      if ('version' in message) {
+        // For MessageV0
+        instructions = message.compiledInstructions;
+        try {
+          // For versioned transactions with lookup tables
+          if (tx.meta?.loadedAddresses) {
+            // Use staticAccountKeys and loaded addresses
+            const staticKeys = message.staticAccountKeys || [];
+            const writableKeys = tx.meta.loadedAddresses.writable || [];
+            const readonlyKeys = tx.meta.loadedAddresses.readonly || [];
+            accountKeys = [...staticKeys, ...writableKeys, ...readonlyKeys];
+          } else {
+            accountKeys = message.staticAccountKeys || [];
+          }
+        } catch (err) {
+          console.log("Error getting account keys, using static keys:", err);
+          accountKeys = message.staticAccountKeys || [];
+        }
+      } else {
+        // For legacy transactions
+        instructions = (message as any).instructions;
+        accountKeys = (message as any).accountKeys;
+      }
+    } else {
+      console.log("Unexpected transaction format");
+      return null;
+    }
+    
+    if (!instructions || !accountKeys) {
+      console.log("Could not extract instructions or account keys");
+      return null;
+    }
+    
+    console.log(`Found ${instructions.length} instructions in transaction`);
+    
+    // Enhanced debugging: print some transaction information
+    console.log(`Transaction details: Slot ${tx.slot}, ${accountKeys.length} account keys`);
+    
+    // Find the TP/SL instruction
+    for (let i = 0; i < instructions.length; i++) {
+      const ix = instructions[i];
+      // Skip if no programId index
+      if (ix.programIdIndex === undefined) continue;
+      
+      // Get program ID
+      const programId = accountKeys[ix.programIdIndex];
+      const programIdStr = programId.toString();
+      
+      // Check if this is a Jupiter Perpetuals instruction
+      if (programIdStr === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
+        console.log(`Found Jupiter Perpetuals instruction #${i+1}`);
+        
+        try {
+          // Get the instruction data
+          const data = Buffer.from(ix.data);
+          
+          // Check the discriminator (first 8 bytes)
+          const discriminator = data.slice(0, 8);
+          console.log(`Instruction discriminator: [${Array.from(discriminator).join(', ')}]`);
+          
+          // Try all possible discriminator formats
+          // Standard Anchor format without namespace
+          const stdCreateDiscr = Buffer.from(utils.sha256.hash("instant_create_tpsl").slice(0, 8));
+          const stdUpdateDiscr = Buffer.from(utils.sha256.hash("instant_update_tpsl").slice(0, 8));
+          
+          // With capital first letter (common convention)
+          const capCreateDiscr = Buffer.from(utils.sha256.hash("Instant_create_tpsl").slice(0, 8));
+          const capUpdateDiscr = Buffer.from(utils.sha256.hash("Instant_update_tpsl").slice(0, 8));
+          
+          // With camelCase (another common convention)
+          const camelCreateDiscr = Buffer.from(utils.sha256.hash("instantCreateTpsl").slice(0, 8));
+          const camelUpdateDiscr = Buffer.from(utils.sha256.hash("instantUpdateTpsl").slice(0, 8));
+          
+          // With snake_case (another common convention)
+          const snakeCreateDiscr = Buffer.from(utils.sha256.hash("instant_create_tpsl").slice(0, 8));
+          const snakeUpdateDiscr = Buffer.from(utils.sha256.hash("instant_update_tpsl").slice(0, 8));
+          
+          // Log all possible discriminators we're checking
+          console.log("Checking against these discriminators:");
+          console.log("Standard create:", Array.from(stdCreateDiscr));
+          console.log("Standard update:", Array.from(stdUpdateDiscr));
+          console.log("Capitalized create:", Array.from(capCreateDiscr));
+          console.log("Capitalized update:", Array.from(capUpdateDiscr));
+          console.log("CamelCase create:", Array.from(camelCreateDiscr));
+          console.log("CamelCase update:", Array.from(camelUpdateDiscr));
+          console.log("Snake_case create:", Array.from(snakeCreateDiscr));
+          console.log("Snake_case update:", Array.from(snakeUpdateDiscr));
+          
+          // Check if the discriminator matches any of our possible formats
+          const isCreateTpsl = 
+            Buffer.compare(discriminator, stdCreateDiscr) === 0 ||
+            Buffer.compare(discriminator, capCreateDiscr) === 0 ||
+            Buffer.compare(discriminator, camelCreateDiscr) === 0 ||
+            Buffer.compare(discriminator, snakeCreateDiscr) === 0;
+            
+          const isUpdateTpsl = 
+            Buffer.compare(discriminator, stdUpdateDiscr) === 0 ||
+            Buffer.compare(discriminator, capUpdateDiscr) === 0 ||
+            Buffer.compare(discriminator, camelUpdateDiscr) === 0 ||
+            Buffer.compare(discriminator, snakeUpdateDiscr) === 0;
+
+          // Additional check - if the discriminator from the transaction matches what we saw
+          // When we inspected the output
+          const knownDiscriminator = Buffer.from([117, 98, 66, 127, 30, 50, 73, 185]);
+          const isKnownDiscriminator = Buffer.compare(discriminator, knownDiscriminator) === 0;
+          if (isKnownDiscriminator) {
+            console.log("Found instruction with known discriminator - this might be our TP/SL instruction");
+            
+            // Try to parse it as if it were a TP/SL instruction
+            try {
+              // Assume it's a TP/SL instruction and try to parse the data
+              const instructionDataBuffer = data.slice(8);
+              console.log(`Instruction data length: ${instructionDataBuffer.length} bytes`);
+              
+              // Dump the entire instruction data for analysis
+              console.log("Instruction data:", Array.from(instructionDataBuffer));
+              
+              // Attempt to decode it as a TP/SL instruction
+              if (instructionDataBuffer.length >= 24) { // Enough data for our expected fields
+                let offset = 0;
+                
+                // Try different structures
+                
+                // Attempt 1: Skip the first 16 bytes (assuming they're collateralUsdDelta and sizeUsdDelta)
+                offset = 16;
+                
+                // Extract triggerPrice
+                const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                console.log(`Potential triggerPrice: ${triggerPrice.toString()} ($${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)})`);
+                offset += 8;
+                
+                // Read a potential boolean value
+                if (offset < instructionDataBuffer.length) {
+                  const potentialBool1 = instructionDataBuffer[offset];
+                  console.log(`Potential triggerAboveThreshold: ${potentialBool1} (${potentialBool1 === 1 ? 'true' : 'false'})`);
+                  offset += 1;
+                }
+                
+                // Read another potential boolean value
+                if (offset < instructionDataBuffer.length) {
+                  const potentialBool2 = instructionDataBuffer[offset];
+                  console.log(`Potential entirePosition: ${potentialBool2} (${potentialBool2 === 1 ? 'true' : 'false'})`);
+                }
+                
+                // Let's try a different approach - let's just log all potential price values 
+                // in the buffer (assuming they're 8-byte BNs)
+                console.log("All potential price values in the buffer:");
+                for (let j = 0; j + 8 <= instructionDataBuffer.length; j += 8) {
+                  const val = new BN(instructionDataBuffer.slice(j, j + 8), 'le');
+                  const usdVal = BNToUSDRepresentation(val, USDC_DECIMALS);
+                  console.log(`Offset ${j}: ${val.toString()} ($${usdVal})`);
+                }
+                
+                // Construct a tpsl data object if we're confident
+                if (offset >= 25 && instructionDataBuffer[24] <= 1 && instructionDataBuffer[25] <= 1) {
+                  // Looks like we found a valid structure
+                  const triggerAboveThreshold = instructionDataBuffer[24] === 1;
+                  const entirePosition = instructionDataBuffer[25] === 1;
+                  
+                  return {
+                    instructionName: 'instantCreateTpsl', // Assume create for now
+                    params: {
+                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                      takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
+                      stopLossSizePct: entirePosition ? 10000 : 5000
+                    }
+                  };
+                }
+              }
+            } catch (e) {
+              console.error(`Error parsing instruction with known discriminator: ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }
+          
+          // Try the original discriminators as well
+          if (isCreateTpsl || isUpdateTpsl) {
+            // This is a TP/SL instruction
+            console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} instruction`);
+            
+            // Now we need to decode the instruction data using Anchor's IDL
+            try {
+              // Use Anchor's BorshCoder to decode the instruction data
+              const ixName = isCreateTpsl ? "instantCreateTpsl" : "instantUpdateTpsl";
+              let decoded;
+              try {
+                // Decode the instruction data after the discriminator
+                const dataAfterDiscriminator = data.slice(8);
+                const args = JUPITER_PERPETUALS_PROGRAM.coder.types.decode(
+                  isCreateTpsl ? "InstantCreateTpslParams" : "InstantUpdateTpslParams", 
+                  dataAfterDiscriminator
+                );
+                decoded = { name: ixName, data: args };
+              } catch (err) {
+                console.log(`Failed to decode ${ixName} instruction:`, err);
+                continue;
+              }
+              
+              // Format the params according to what we need
+              let tpslParams = null;
+              
+              if (isCreateTpsl) {
+                // Extract from decoded args
+                const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
+                
+                // Map to our format - take profit is triggerAboveThreshold=true, stop loss is triggerAboveThreshold=false
+                tpslParams = {
+                  instructionName: 'instantCreateTpsl',
+                  params: {
+                    takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                    stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                    takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),  // 100% by default
+                    stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()     // 100% by default
+                  }
+                };
+                
+                console.log(`Extracted TP/SL data:`, tpslParams);
+                return tpslParams;
+              } 
+              else if (isUpdateTpsl) {
+                // Extract fields similarly
+                const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
+                
+                tpslParams = {
+                  instructionName: 'instantUpdateTpsl',
+                  params: {
+                    takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                    stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                    takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
+                    stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
+                  }
+                };
+                
+                console.log(`Extracted TP/SL data:`, tpslParams);
+                return tpslParams;
+              }
+            } catch (error) {
+              console.error(`Error decoding instruction data: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+          
+          // Return null if we didn't find a matching instruction
+          return null;
+        } catch (err) {
+          console.log("Error parsing instruction data:", err);
+          return null;
+        }
+      }
+    }
+    
+    // If we didn't find the instruction in the main instructions, check inner instructions
+    if (tx.meta?.innerInstructions && tx.meta.innerInstructions.length > 0) {
+      console.log("Checking inner instructions...");
+      
+      for (let i = 0; i < tx.meta.innerInstructions.length; i++) {
+        const innerIxSet = tx.meta.innerInstructions[i];
+        
+        for (let j = 0; j < innerIxSet.instructions.length; j++) {
+          const innerIx = innerIxSet.instructions[j];
+          
+          try {
+            // We need to convert base58 encoded data to Buffer
+            const data = utils.bytes.bs58.decode(innerIx.data);
+            
+            // Skip if too short
+            if (data.length < 8) continue;
+            
+            // Check discriminator
+            const discriminator = data.slice(0, 8);
+            const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
+            const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
+            
+            if (isCreateTpsl || isUpdateTpsl) {
+              console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} in inner instructions`);
+              
+              try {
+                // Try to decode using IDL
+                const ixName = isCreateTpsl ? "instantCreateTpsl" : "instantUpdateTpsl";
+                let decoded;
+                try {
+                  // Use the BorshCoder directly to decode the args
+                  const dataAfterDiscriminator = data.slice(8);
+                  const args = JUPITER_PERPETUALS_PROGRAM.coder.types.decode(
+                    isCreateTpsl ? "InstantCreateTpslParams" : "InstantUpdateTpslParams",
+                    dataAfterDiscriminator
+                  );
+                  
+                  decoded = { name: ixName, data: args };
+                } catch (err) {
+                  console.log(`Failed to decode inner ${ixName} instruction:`, err);
+                  continue;
+                }
+                
+                // Create our format
+                if (isCreateTpsl) {
+                  const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
+                  
+                  const tpslParams = {
+                    instructionName: 'instantCreateTpsl',
+                    params: {
+                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                      takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
+                      stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
+                    }
+                  };
+                  
+                  console.log(`Extracted inner TP/SL data:`, tpslParams);
+                  return tpslParams;
+                }
+                else if (isUpdateTpsl) {
+                  const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
+                  
+                  const tpslParams = {
+                    instructionName: 'instantUpdateTpsl',
+                    params: {
+                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                      takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
+                      stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
+                    }
+                  };
+                  
+                  console.log(`Extracted inner TP/SL data:`, tpslParams);
+                  return tpslParams;
+                }
+              } catch (error) {
+                console.error(`Error decoding inner instruction: ${error instanceof Error ? error.message : String(error)}`);
+                
+                // Fallback to basic parsing for inner instructions too
+                try {
+                  const instructionDataBuffer = data.slice(8);
+                  
+                  let offset = 16; // Skip collateralUsdDelta and sizeUsdDelta
+                  
+                  // Extract triggerPrice
+                  const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                  offset += 8;
+                  
+                  // Extract triggerAboveThreshold
+                  const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+                  offset += 1;
+                  
+                  // Extract entirePosition
+                  const entirePosition = instructionDataBuffer[offset] === 1;
+                  
+                  // Map to our format
+                  const tpslParams = {
+                    instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
+                    params: {
+                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                      takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
+                      stopLossSizePct: entirePosition ? 10000 : 5000
+                    }
+                  };
+                  
+                  console.log(`Extracted inner TP/SL data (fallback):`, tpslParams);
+                  return tpslParams;
+                } catch (e) {
+                  console.error(`Inner instruction fallback parsing failed: ${e instanceof Error ? e.message : String(e)}`);
+                }
+              }
+            }
+          } catch (err) {
+            // Skip errors when trying to decode inner instructions
+          }
+        }
+      }
+    }
+    
+    console.log("No TP/SL instruction found in transaction");
+    return null;
+  } catch (err) {
+    console.log("Error processing transaction:", err);
+    return null;
+  }
 }
 
 /**
@@ -498,6 +1102,25 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
   };
 }
 
+// Enhance formatting for TP/SL instruction data when extracted from event
+function formatTpslInstructionData(data: any): string {
+  if (!data || !data.params) return "Not available";
+  
+  let output = [];
+  
+  if (data.params.takeProfitTriggerPrice) {
+    const tpPrice = BNToUSDRepresentation(data.params.takeProfitTriggerPrice, USDC_DECIMALS);
+    output.push(`Take Profit: $${tpPrice} (${data.params.takeProfitSizePct / 100}%)`);
+  }
+  
+  if (data.params.stopLossTriggerPrice) {
+    const slPrice = BNToUSDRepresentation(data.params.stopLossTriggerPrice, USDC_DECIMALS);
+    output.push(`Stop Loss: $${slPrice} (${data.params.stopLossSizePct / 100}%)`);
+  }
+  
+  return output.join(", ");
+}
+
 /**
  * Get the complete trade history for a specific position PDA
  */
@@ -513,7 +1136,84 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
       console.log(`Type: ${evt.event.name}`);
       console.log(`Transaction: ${evt.tx.signature}`);
       console.log(`Time: ${evt.tx.blockTime}`);
-      console.log("Data:", evt.event.data);
+      
+      // Special handling for TP/SL events - show the instruction data too
+      if (evt.event.name === 'InstantCreateTpslEvent' || evt.event.name === 'InstantUpdateTpslEvent') {
+        // Extract tpslInstructionData first so we can display it separately
+        const { tpslInstructionData, ...eventData } = evt.event.data;
+        
+        // Display regular event data
+        console.log("Event Data:", eventData);
+        
+        // Display TP/SL instruction data if available
+        if (tpslInstructionData) {
+          console.log("TP/SL Instruction Data:");
+          console.log(`  Instruction: ${tpslInstructionData.instructionName}`);
+          console.log(`  Collateral USD Delta: ${eventData.tpslCollateralUsdDelta || '$0.00'}`);
+          console.log(`  Size USD Delta: ${eventData.tpslSizeUsdDelta || '$0.00'}`);
+          console.log(`  Trigger Price: ${eventData.tpslTriggerPrice || 'N/A'}`);
+          console.log(`  Trigger Above Threshold: ${eventData.tpslTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
+          console.log(`  Entire Position: ${eventData.tpslEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
+          
+          if (eventData.tpslCounter) console.log(`  Counter: ${eventData.tpslCounter}`);
+          if (eventData.tpslRequestTime) console.log(`  Request Time: ${eventData.tpslRequestTime}`);
+          
+          // Add the interpreted TP/SL values for clarity
+          console.log(`  Order Type: ${eventData.tpslTriggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
+          
+          if (eventData.tpslTriggerAboveThreshold) {
+            console.log(`  Take Profit Price: ${eventData.tpslTriggerPrice}`);
+            console.log(`  Take Profit Size: ${eventData.tpslEntirePosition ? '100%' : '50%'}`);
+          } else {
+            console.log(`  Stop Loss Price: ${eventData.tpslTriggerPrice}`);
+            console.log(`  Stop Loss Size: ${eventData.tpslEntirePosition ? '100%' : '50%'}`);
+          }
+        } else {
+          console.log("TP/SL Instruction Data: Fetching from transaction...");
+          // Immediately fetch and display the instruction data
+          getTpslInstructionData(evt.tx.signature).then(tpslData => {
+            if (tpslData && tpslData.params) {
+              console.log("Found TP/SL Instruction Data:");
+              
+              // Show all raw parameters
+              console.log(`  Instruction: ${tpslData.instructionName}`);
+              console.log(`  Collateral USD Delta: $${BNToUSDRepresentation(tpslData.params.collateralUsdDelta, USDC_DECIMALS)}`);
+              console.log(`  Size USD Delta: $${BNToUSDRepresentation(tpslData.params.sizeUsdDelta, USDC_DECIMALS)}`);
+              console.log(`  Trigger Price: $${BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS)}`);
+              console.log(`  Trigger Above Threshold: ${tpslData.params.triggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
+              console.log(`  Entire Position: ${tpslData.params.entirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
+              
+              if (tpslData.params.counter) 
+                console.log(`  Counter: ${tpslData.params.counter.toString()}`);
+              
+              if (tpslData.params.requestTime) {
+                const timestamp = new Date(tpslData.params.requestTime.toNumber() * 1000).toISOString();
+                console.log(`  Request Time: ${timestamp}`);
+              }
+              
+              // Show interpreted values
+              console.log(`  Order Type: ${tpslData.params.triggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
+              
+              if (tpslData.params.triggerAboveThreshold && tpslData.params.takeProfitTriggerPrice) {
+                const tpPrice = BNToUSDRepresentation(tpslData.params.takeProfitTriggerPrice, USDC_DECIMALS);
+                console.log(`  Take Profit Price: $${tpPrice}`);
+                console.log(`  Take Profit Size: ${tpslData.params.entirePosition ? '100%' : '50%'}`);
+              } else if (!tpslData.params.triggerAboveThreshold && tpslData.params.stopLossTriggerPrice) {
+                const slPrice = BNToUSDRepresentation(tpslData.params.stopLossTriggerPrice, USDC_DECIMALS);
+                console.log(`  Stop Loss Price: $${slPrice}`);
+                console.log(`  Stop Loss Size: ${tpslData.params.entirePosition ? '100%' : '50%'}`);
+              }
+            } else {
+              console.log("  Failed to extract TP/SL instruction data from transaction");
+            }
+          }).catch(err => {
+            console.log("  Error fetching TP/SL instruction data:", err.message);
+          });
+        }
+      } else {
+        // Regular event display
+        console.log("Data:", evt.event.data);
+      }
     }
   });
   console.log("============================\n");
@@ -535,23 +1235,23 @@ async function analyzeTradeHistory() {
   // Print detailed trade information
   if (activeTrades.length > 0) {
     console.log("\n------- ACTIVE TRADES -------");
-    activeTrades.forEach((trade, index) => {
-      printDetailedTradeInfo(trade, index);
-    });
+    for (let i = 0; i < activeTrades.length; i++) {
+      await printDetailedTradeInfo(activeTrades[i], i);
+    }
   }
   
   if (completedTrades.length > 0) {
     console.log("\n------- COMPLETED TRADES -------");
-    completedTrades.forEach((trade, index) => {
-      printDetailedTradeInfo(trade, index);
-    });
+    for (let i = 0; i < completedTrades.length; i++) {
+      await printDetailedTradeInfo(completedTrades[i], i);
+    }
   }
   
   console.log("===============================");
 }
 
-// Add a new function to print detailed trade information
-function printDetailedTradeInfo(trade: ITrade, index: number) {
+// Update the printDetailedTradeInfo function to better display TP/SL data
+async function printDetailedTradeInfo(trade: ITrade, index: number) {
   const side = trade.positionSide;
   const status = trade.status === "liquidated" ? "LIQUIDATED" : (trade.status === "closed" ? "CLOSED" : "ACTIVE");
   const pnl = trade.pnl ? `$${trade.pnl.toFixed(2)}` : "N/A";
@@ -751,6 +1451,56 @@ function printDetailedTradeInfo(trade: ITrade, index: number) {
   
   if (trade.closeTime) {
     console.log(`Closed: ${trade.closeTime}`);
+  }
+  
+  // Check for TP/SL events in the trade
+  const hasTpslEvent = trade.events.some(evt => 
+    evt?.event?.name === 'InstantCreateTpslEvent' || 
+    evt?.event?.name === 'InstantUpdateTpslEvent'
+  );
+
+  if (hasTpslEvent) {
+    // Find the most recent TP/SL event to show current values
+    const tpslEvent = [...trade.events]
+      .reverse()
+      .find(evt => 
+        evt?.event?.name === 'InstantCreateTpslEvent' || 
+        evt?.event?.name === 'InstantUpdateTpslEvent'
+      );
+    
+    if (tpslEvent?.event?.data) {
+      const data = tpslEvent.event.data;
+      
+      // First check if we have instruction data directly in the event
+      if (data.tpslInstructionData && data.tpslInstructionData.params) {
+        const tpslData = data.tpslInstructionData;
+        const isTP = data.tpslTriggerAboveThreshold;
+        const isSL = !data.tpslTriggerAboveThreshold;
+        
+        console.log(`TP/SL Orders: ${isTP ? 'Take Profit' : ''}${isTP && isSL ? ' and ' : ''}${isSL ? 'Stop Loss' : ''}`);
+        
+        // Show all the TP/SL instruction parameters
+        console.log(`  Instruction: ${tpslData.instructionName}`);
+        console.log(`  Trigger Price: ${data.tpslTriggerPrice}`);
+        console.log(`  Order Type: ${isTP ? 'Take Profit' : 'Stop Loss'}`);
+        console.log(`  Size: ${data.tpslEntirePosition ? '100%' : '50%'} of position`);
+        
+        if (data.tpslCollateralUsdDelta && data.tpslCollateralUsdDelta !== '$0.00') 
+          console.log(`  Collateral USD Delta: ${data.tpslCollateralUsdDelta}`);
+        
+        if (data.tpslSizeUsdDelta && data.tpslSizeUsdDelta !== '$0.00')
+          console.log(`  Size USD Delta: ${data.tpslSizeUsdDelta}`);
+        
+        if (data.tpslCounter && data.tpslCounter !== '0')
+          console.log(`  Counter: ${data.tpslCounter}`);
+        
+        if (data.tpslRequestTime)
+          console.log(`  Request Time: ${data.tpslRequestTime}`);
+      } 
+      // ... rest of the existing function
+    } else {
+      console.log(`TP/SL Orders: Set`);
+    }
   }
   
   console.log(`Events in trade: ${trade.events.length}`);
