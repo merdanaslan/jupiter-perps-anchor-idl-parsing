@@ -64,6 +64,12 @@ export const TPSL_INSTRUCTION_DISCRIMINATORS = {
   instantUpdateTpsl: Buffer.from([215, 61, 230, 134, 70, 19, 40, 15])  // Placeholder - we'll update this if we find it
 };
 
+// Add discriminators for limit order instructions
+export const LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS = {
+  instantCreateLimitOrder: Buffer.from([]), // Will be populated from debug if found
+  instantUpdateLimitOrder: Buffer.from([])  // Will be populated from debug if found
+};
+
 // Remove the debug logging
 // console.log("Create TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl));
 // console.log("Update TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl));
@@ -378,7 +384,10 @@ export async function getPositionEvents() {
       data?.event?.name === "IncreasePositionPreSwapEvent" ||
       data?.event?.name === "DecreasePositionPostSwapEvent" ||
       data?.event?.name === "InstantCreateTpslEvent" ||
-      data?.event?.name === "InstantUpdateTpslEvent"
+      data?.event?.name === "InstantUpdateTpslEvent" ||
+      data?.event?.name === "InstantCreateLimitOrderEvent" ||  // Add limit order events
+      data?.event?.name === "InstantUpdateLimitOrderEvent" ||
+      data?.event?.name === "FillLimitOrderEvent"
   );
   
   console.log(`Found ${filteredEvents.length} relevant position events`);
@@ -829,6 +838,180 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
 }
 
 /**
+ * Parse limit order instruction data from transaction
+ * This function fetches the transaction that contains a limit order event and decodes the instruction data using the IDL
+ */
+async function getLimitOrderInstructionData(txSignature: string): Promise<any> {
+  try {
+    // Fetch the transaction with retry
+    console.log(`Fetching transaction ${txSignature} to decode limit order instruction data...`);
+    const tx = await fetchTransactionWithRetry(txSignature);
+    
+    if (!tx || !tx.transaction) {
+      console.log("Transaction not found or has no data");
+      return null;
+    }
+    
+    // Get all instructions in the transaction - handle versioned transactions
+    let instructions;
+    let accountKeys;
+    
+    if ('message' in tx.transaction) {
+      const message = tx.transaction.message;
+      
+      // For versioned transactions
+      if ('version' in message) {
+        // For MessageV0
+        instructions = message.compiledInstructions;
+        try {
+          // For versioned transactions with lookup tables
+          if (tx.meta?.loadedAddresses) {
+            // Use staticAccountKeys and loaded addresses
+            const staticKeys = message.staticAccountKeys || [];
+            const writableKeys = tx.meta.loadedAddresses.writable || [];
+            const readonlyKeys = tx.meta.loadedAddresses.readonly || [];
+            accountKeys = [...staticKeys, ...writableKeys, ...readonlyKeys];
+          } else {
+            accountKeys = message.staticAccountKeys || [];
+          }
+        } catch (err) {
+          console.log("Error getting account keys, using static keys:", err);
+          accountKeys = message.staticAccountKeys || [];
+        }
+      } else {
+        // For legacy transactions
+        instructions = (message as any).instructions;
+        accountKeys = (message as any).accountKeys;
+      }
+    } else {
+      console.log("Unexpected transaction format");
+      return null;
+    }
+    
+    if (!instructions || !accountKeys) {
+      console.log("Could not extract instructions or account keys");
+      return null;
+    }
+    
+    // Find the limit order instruction
+    for (let i = 0; i < instructions.length; i++) {
+      const ix = instructions[i];
+      // Skip if no programId index
+      if (ix.programIdIndex === undefined) continue;
+      
+      // Get program ID
+      const programId = accountKeys[ix.programIdIndex];
+      const programIdStr = programId.toString();
+      
+      // Check if this is a Jupiter Perpetuals instruction
+      if (programIdStr === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
+        // Get the instruction data
+        const data = Buffer.from(ix.data);
+        
+        // Check the discriminator (first 8 bytes)
+        const discriminator = data.slice(0, 8);
+        
+        // Log discriminator if we find events for debugging
+        if (data.length > 8) {
+          // Check for likely limit order instructions based on name patterns
+          const possibleDiscriminatorNames = [
+            "instant_create_limit_order",
+            "instantCreateLimitOrder",
+            "instant_update_limit_order",
+            "instantUpdateLimitOrder"
+          ];
+          
+          for (const name of possibleDiscriminatorNames) {
+            const calculatedDiscr = Buffer.from(utils.sha256.hash(name).slice(0, 8));
+            if (Buffer.compare(discriminator, calculatedDiscr) === 0) {
+              console.log(`Found potential limit order instruction (${name}): [${Array.from(discriminator)}]`);
+              
+              // If we find a match, save it for future reference
+              if (name.includes("create")) {
+                LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantCreateLimitOrder = Buffer.from(discriminator);
+              } else if (name.includes("update")) {
+                LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantUpdateLimitOrder = Buffer.from(discriminator);
+              }
+            }
+          }
+        }
+        
+        // Check against known discriminators
+        const isCreateLimitOrder = 
+          LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantCreateLimitOrder.length > 0 && 
+          Buffer.compare(discriminator, LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantCreateLimitOrder) === 0;
+          
+        const isUpdateLimitOrder = 
+          LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantUpdateLimitOrder.length > 0 && 
+          Buffer.compare(discriminator, LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS.instantUpdateLimitOrder) === 0;
+        
+        if (isCreateLimitOrder || isUpdateLimitOrder) {
+          // This is a limit order instruction
+          console.log(`Found ${isCreateLimitOrder ? 'instantCreateLimitOrder' : 'instantUpdateLimitOrder'} instruction`);
+          
+          try {
+            // Use Anchor's BorshCoder to decode the instruction data
+            const ixName = isCreateLimitOrder ? "instantCreateLimitOrder" : "instantUpdateLimitOrder";
+            const dataAfterDiscriminator = data.slice(8);
+            
+            try {
+              // Decode the instruction data after the discriminator
+              const args = JUPITER_PERPETUALS_PROGRAM.coder.types.decode(
+                isCreateLimitOrder ? "InstantCreateLimitOrderParams" : "InstantUpdateLimitOrderParams", 
+                dataAfterDiscriminator
+              );
+              
+              // If we've made it here, decoding succeeded
+              return {
+                instructionName: ixName,
+                params: args
+              };
+            } catch (err) {
+              console.log(`Failed to decode ${ixName} instruction:`, err);
+              
+              // Fallback to binary parsing if needed
+              // Structure of limit order params (based on IDL):
+              // Price, size, etc.
+              const instructionDataBuffer = data.slice(8);
+              console.log("Instruction data (hex):", Buffer.from(instructionDataBuffer).toString('hex'));
+              
+              // Extract common fields we expect in limit orders
+              let offset = 0;
+              
+              // Try to extract price (u64/BN)
+              if (offset + 8 <= instructionDataBuffer.length) {
+                const price = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                console.log(`Potential limit price: $${BNToUSDRepresentation(price, USDC_DECIMALS)}`);
+                offset += 8;
+              }
+              
+              // Try to extract size (u64/BN)
+              if (offset + 8 <= instructionDataBuffer.length) {
+                const size = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                console.log(`Potential size: $${BNToUSDRepresentation(size, USDC_DECIMALS)}`);
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing limit order instruction: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      }
+    }
+    
+    // If we didn't find anything in the main instructions, check inner instructions
+    if (tx.meta?.innerInstructions && tx.meta.innerInstructions.length > 0) {
+      // Similar to TP/SL processing, look for limit order instructions in inner instructions
+      // Implementation would be similar to the above code
+    }
+    
+    return null;
+  } catch (err) {
+    console.log("Error processing transaction:", err);
+    return null;
+  }
+}
+
+/**
  * Helper function to parse USD value from string format
  */
 function parseUsdValue(value: string): number {
@@ -856,7 +1039,8 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     evt.event?.name === 'DecreasePositionEvent' ||
     evt.event?.name === 'InstantIncreasePositionEvent' ||
     evt.event?.name === 'InstantDecreasePositionEvent' ||
-    evt.event?.name === 'LiquidateFullPositionEvent'
+    evt.event?.name === 'LiquidateFullPositionEvent' ||
+    evt.event?.name === 'FillLimitOrderEvent'  // Add FillLimitOrderEvent as a main event
   );
 
   // Create a map to associate auxiliary events (pre-swap, swap) with position events by timestamp
@@ -1210,6 +1394,52 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
             console.log("  Error fetching TP/SL instruction data:", err.message);
           });
         }
+      } 
+      // Add handling for limit order events
+      else if (evt.event.name === 'InstantCreateLimitOrderEvent' || evt.event.name === 'InstantUpdateLimitOrderEvent' || evt.event.name === 'FillLimitOrderEvent') {
+        // Extract limit order instruction data first
+        const { limitOrderInstructionData, ...eventData } = evt.event.data;
+        
+        // Display regular event data
+        console.log("Event Data:", eventData);
+        
+        // Try to fetch and decode the limit order instruction data if not already available
+        if (!limitOrderInstructionData) {
+          console.log("Limit Order Instruction Data: Fetching from transaction...");
+          
+          // Fetch limit order data asynchronously
+          getLimitOrderInstructionData(evt.tx.signature).then(orderData => {
+            if (orderData) {
+              console.log("Found Limit Order Instruction Data:");
+              console.log(`  Instruction: ${orderData.instructionName}`);
+              
+              // Format and display parameters based on instruction type
+              if (orderData.params) {
+                // Create or Update limit order
+                if (orderData.params.price) {
+                  console.log(`  Limit Price: $${BNToUSDRepresentation(orderData.params.price, USDC_DECIMALS)}`);
+                }
+                
+                if (orderData.params.size) {
+                  console.log(`  Size: $${BNToUSDRepresentation(orderData.params.size, USDC_DECIMALS)}`);
+                }
+                
+                // Add any other relevant fields
+                if (orderData.params.orderType !== undefined) {
+                  console.log(`  Order Type: ${orderData.params.orderType === 0 ? 'Buy' : 'Sell'}`);
+                }
+              }
+            } else {
+              console.log("  Failed to extract limit order instruction data");
+            }
+          }).catch(err => {
+            console.log("  Error fetching limit order data:", err.message);
+          });
+        } else {
+          // If we already have the data, display it
+          console.log("Limit Order Instruction Data:");
+          console.log(limitOrderInstructionData);
+        }
       } else {
         // Regular event display
         console.log("Data:", evt.event.data);
@@ -1220,6 +1450,27 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
   
   // Group events into trades
   return groupEventsIntoTrades(events);
+}
+
+// Helper function to format limit order data
+function formatLimitOrderData(data: any): string {
+  if (!data || !data.params) return "Not available";
+  
+  let output = [];
+  
+  if (data.params.price) {
+    const price = BNToUSDRepresentation(data.params.price, USDC_DECIMALS);
+    output.push(`Limit Price: $${price}`);
+  }
+  
+  if (data.params.size) {
+    const size = BNToUSDRepresentation(data.params.size, USDC_DECIMALS);
+    output.push(`Size: $${size}`);
+  }
+  
+  // Add more fields as needed
+  
+  return output.join(", ");
 }
 
 /**
@@ -1250,7 +1501,7 @@ async function analyzeTradeHistory() {
   console.log("===============================");
 }
 
-// Update the printDetailedTradeInfo function to better display TP/SL data
+// Update the printDetailedTradeInfo function to better display TP/SL data and add limit order info
 async function printDetailedTradeInfo(trade: ITrade, index: number) {
   const side = trade.positionSide;
   const status = trade.status === "liquidated" ? "LIQUIDATED" : (trade.status === "closed" ? "CLOSED" : "ACTIVE");
@@ -1503,6 +1754,62 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
     }
   }
   
+  // Check for limit order events in the trade
+  const hasLimitOrderEvent = trade.events.some(evt => 
+    evt?.event?.name === 'InstantCreateLimitOrderEvent' || 
+    evt?.event?.name === 'InstantUpdateLimitOrderEvent' ||
+    evt?.event?.name === 'FillLimitOrderEvent'
+  );
+
+  if (hasLimitOrderEvent) {
+    // Find the most recent limit order event to show current values
+    const limitOrderEvent = [...trade.events]
+      .reverse()
+      .find(evt => 
+        evt?.event?.name === 'InstantCreateLimitOrderEvent' || 
+        evt?.event?.name === 'InstantUpdateLimitOrderEvent' ||
+        evt?.event?.name === 'FillLimitOrderEvent'
+      );
+    
+    if (limitOrderEvent?.event?.data) {
+      const data = limitOrderEvent.event.data;
+      
+      // First check if we have instruction data directly in the event
+      if (data.limitOrderInstructionData && data.limitOrderInstructionData.params) {
+        const orderData = data.limitOrderInstructionData;
+        
+        console.log(`Limit Order: Active`);
+        
+        // Show limit order parameters
+        if (orderData.params.price) {
+          console.log(`  Limit Price: $${BNToUSDRepresentation(orderData.params.price, USDC_DECIMALS)}`);
+        }
+        
+        if (orderData.params.size) {
+          console.log(`  Size: $${BNToUSDRepresentation(orderData.params.size, USDC_DECIMALS)}`);
+        }
+        
+        // Add any other relevant fields
+        if (orderData.params.orderType !== undefined) {
+          console.log(`  Order Type: ${orderData.params.orderType === 0 ? 'Buy' : 'Sell'}`);
+        }
+      } else if (limitOrderEvent.event.name === 'FillLimitOrderEvent') {
+        // For fill events, we can display information directly from the event
+        console.log(`Limit Order: Filled`);
+        if (data.price) {
+          console.log(`  Fill Price: ${data.price}`);
+        }
+        if (data.size) {
+          console.log(`  Size: ${data.size}`);
+        }
+      } else {
+        console.log(`Limit Order: Set`);
+      }
+    } else {
+      console.log(`Limit Order: Set`);
+    }
+  }
+  
   console.log(`Events in trade: ${trade.events.length}`);
   
   // Enhanced events summary
@@ -1538,92 +1845,152 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           orderType = "Market";
         }
         
-        console.log(`  ${i+1}. ${eventType}`);
-        console.log(`     Date: ${eventTime}`);
-        console.log(`     Action: ${action}`);
-        console.log(`     Type: ${orderType}`);
-        
-        // Display token information
-        if (eventData.positionMint) {
-          const symbol = getSymbolFromMint(eventData.positionMint);
-          console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
-        }
-        
-        if (eventData.positionRequestMint) {
-          const symbol = getSymbolFromMint(eventData.positionRequestMint);
-          console.log(`     Using: ${symbol}${eventData.positionRequestMint ? ` (${eventData.positionRequestMint.substring(0, 8)}...)` : ''}`);
-        }
-        
-        // Get sizes - with special handling for liquidation events
-        let sizeUsd = 0;
-        if (eventType.includes('Liquidate')) {
-          // For liquidation events, use positionSizeUsd instead of sizeUsdDelta
-          sizeUsd = parseUsdValue(eventData.positionSizeUsd || "0");
-        } else {
-          sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
-        }
-        
-        const price = parseUsdValue(eventData.price || "0");
-        const notionalSize = price > 0 ? sizeUsd / price : 0;
-        
-        // Only show notional size for non-liquidation events
-        if (!eventType.includes('Liquidate')) {
-          console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
-        }
-        console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
-        console.log(`     Price: ${eventData.price || "N/A"}`);
-        
-        // Add payout information for decrease/liquidation events
-        if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
-          if (eventData.transferAmountUsd) {
-            console.log(`     Payout (USD): $${parseUsdValue(eventData.transferAmountUsd).toFixed(2)}`);
-          }
+        // Check if this is a limit order event
+        if (eventType.includes('LimitOrder')) {
+          console.log(`  ${i+1}. ${eventType}`);
+          console.log(`     Date: ${eventTime}`);
           
-          if (eventData.transferToken) {
-            const tokenAmount = Number(eventData.transferToken);
-            const requestMint = eventData.positionRequestMint || eventData.desiredMint;
-            let tokenSymbol = "Unknown";
-            let decimals = 6; // Default to 6 decimals (USDC)
+          if (eventType === 'FillLimitOrderEvent') {
+            console.log(`     Action: Fill`);
             
-            // Try to determine token symbol and decimals
-            if (requestMint) {
-              // Known token addresses
-              if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
-                tokenSymbol = "USDC";
-                decimals = 6;
-              } else if (requestMint === "So11111111111111111111111111111111111111112") {
-                tokenSymbol = "SOL";
-                decimals = 9;
-              } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
-                tokenSymbol = "WETH";
-                decimals = 8;
+            // Display fill details
+            if (eventData.price) {
+              console.log(`     Fill Price: ${eventData.price}`);
+            }
+            if (eventData.size) {
+              console.log(`     Size: ${eventData.size}`);
+            }
+            if (eventData.fee) {
+              console.log(`     Fee: ${eventData.fee}`);
+            }
+          } else if (eventType === 'InstantCreateLimitOrderEvent') {
+            console.log(`     Action: Create Limit Order`);
+            
+            // Try to display limit price from instruction data if available
+            if (eventData.limitOrderInstructionData && eventData.limitOrderInstructionData.params) {
+              const params = eventData.limitOrderInstructionData.params;
+              if (params.price) {
+                console.log(`     Limit Price: $${BNToUSDRepresentation(params.price, USDC_DECIMALS)}`);
+              }
+              if (params.size) {
+                console.log(`     Size: $${BNToUSDRepresentation(params.size, USDC_DECIMALS)}`);
+              }
+              if (params.orderType !== undefined) {
+                console.log(`     Order Type: ${params.orderType === 0 ? 'Buy' : 'Sell'}`);
               }
             }
+          } else if (eventType === 'InstantUpdateLimitOrderEvent') {
+            console.log(`     Action: Update Limit Order`);
             
-            const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
-            console.log(`     Payout (Token): ${formattedAmount} ${tokenSymbol}`);
+            // Similar to create, display updated parameters
+            if (eventData.limitOrderInstructionData && eventData.limitOrderInstructionData.params) {
+              const params = eventData.limitOrderInstructionData.params;
+              if (params.price) {
+                console.log(`     New Limit Price: $${BNToUSDRepresentation(params.price, USDC_DECIMALS)}`);
+              }
+              if (params.size) {
+                console.log(`     New Size: $${BNToUSDRepresentation(params.size, USDC_DECIMALS)}`);
+              }
+            }
           }
-        }
-        
-        // Handle fees display - with special handling for liquidation events
-        const fee = parseUsdValue(eventData.feeUsd || "0");
-        console.log(`     Fee: $${fee.toFixed(2)}`);
-        
-        if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
-          const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
-          console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
-        }
-        
-        // Add collateral information for relevant events - simplified
-        if (eventType.includes('Increase') || eventType.includes('Decrease')) {
-          const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
-          console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
-        }
-        
-        // Show profit/loss information for decrease events
-        if ((eventType.includes('Decrease') || eventType.includes('Liquidate')) && eventData.pnlDelta) {
-          const pnlDelta = parseUsdValue(eventData.pnlDelta);
-          console.log(`     PnL: $${pnlDelta.toFixed(2)} (${eventData.hasProfit ? 'Profit' : 'Loss'})`);
+          
+          // Display position and pool info if available
+          if (eventData.positionKey) {
+            console.log(`     Position: ${eventData.positionKey.substring(0, 8)}...`);
+          }
+          if (eventData.pool) {
+            console.log(`     Pool: ${eventData.pool.substring(0, 8)}...`);
+          }
+        } 
+        else {
+          // Regular event display for non-limit order events
+          console.log(`  ${i+1}. ${eventType}`);
+          console.log(`     Date: ${eventTime}`);
+          console.log(`     Action: ${action}`);
+          console.log(`     Type: ${orderType}`);
+          
+          // Display token information
+          if (eventData.positionMint) {
+            const symbol = getSymbolFromMint(eventData.positionMint);
+            console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
+          }
+          
+          if (eventData.positionRequestMint) {
+            const symbol = getSymbolFromMint(eventData.positionRequestMint);
+            console.log(`     Using: ${symbol}${eventData.positionRequestMint ? ` (${eventData.positionRequestMint.substring(0, 8)}...)` : ''}`);
+          }
+          
+          // Get sizes - with special handling for liquidation events
+          let sizeUsd = 0;
+          if (eventType.includes('Liquidate')) {
+            // For liquidation events, use positionSizeUsd instead of sizeUsdDelta
+            sizeUsd = parseUsdValue(eventData.positionSizeUsd || "0");
+          } else {
+            sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
+          }
+          
+          const price = parseUsdValue(eventData.price || "0");
+          const notionalSize = price > 0 ? sizeUsd / price : 0;
+          
+          // Only show notional size for non-liquidation events
+          if (!eventType.includes('Liquidate')) {
+            console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+          }
+          console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
+          console.log(`     Price: ${eventData.price || "N/A"}`);
+          
+          // Add payout information for decrease/liquidation events
+          if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+            if (eventData.transferAmountUsd) {
+              console.log(`     Payout (USD): $${parseUsdValue(eventData.transferAmountUsd).toFixed(2)}`);
+            }
+            
+            if (eventData.transferToken) {
+              const tokenAmount = Number(eventData.transferToken);
+              const requestMint = eventData.positionRequestMint || eventData.desiredMint;
+              let tokenSymbol = "Unknown";
+              let decimals = 6; // Default to 6 decimals (USDC)
+              
+              // Try to determine token symbol and decimals
+              if (requestMint) {
+                // Known token addresses
+                if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+                  tokenSymbol = "USDC";
+                  decimals = 6;
+                } else if (requestMint === "So11111111111111111111111111111111111111112") {
+                  tokenSymbol = "SOL";
+                  decimals = 9;
+                } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
+                  tokenSymbol = "WETH";
+                  decimals = 8;
+                }
+              }
+              
+              const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
+              console.log(`     Payout (Token): ${formattedAmount} ${tokenSymbol}`);
+            }
+          }
+          
+          // Handle fees display - with special handling for liquidation events
+          const fee = parseUsdValue(eventData.feeUsd || "0");
+          console.log(`     Fee: $${fee.toFixed(2)}`);
+          
+          if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
+            const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
+            console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
+          }
+          
+          // Add collateral information for relevant events - simplified
+          if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+            const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
+            console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
+          }
+          
+          // Show profit/loss information for decrease events
+          if ((eventType.includes('Decrease') || eventType.includes('Liquidate')) && eventData.pnlDelta) {
+            const pnlDelta = parseUsdValue(eventData.pnlDelta);
+            console.log(`     PnL: $${pnlDelta.toFixed(2)} (${eventData.hasProfit ? 'Profit' : 'Loss'})`);
+          }
         }
       } 
       // For pre-swap events
