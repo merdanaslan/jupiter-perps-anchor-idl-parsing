@@ -1827,228 +1827,10 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
       const eventType = evt.event.name;
       const eventTime = evt.tx.blockTime || "Unknown";
       
-      // For regular events (not pre-swap)
-      if (!eventType.includes('PreSwap') && !eventType.includes('PostSwap')) {
-        // Determine if buy or sell
-        let action = "";
-        if (eventType.includes('Increase')) {
-          action = trade.positionSide === "Long" ? "Buy" : "Sell";
-        } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
-          action = trade.positionSide === "Long" ? "Sell" : "Buy";
-        }
-        
-        // Determine if market or limit based on positionRequestType and event name
-        let orderType = "Market"; // Default to Market
-        if (eventType.includes('Instant')) {
-          // All Instant events are market orders by definition
-          orderType = "Market";
-        } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
-          // For non-Instant events, check positionRequestType if available
-          if (eventData.positionRequestType !== undefined) {
-            orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
-          }
-        } else if (eventType.includes('Liquidate')) {
-          // Liquidations are always forced market orders
-          orderType = "Market";
-        }
-        
-        // Check if this is a limit order event
-        if (eventType.includes('LimitOrder')) {
-          console.log(`  ${i+1}. ${eventType}`);
-          console.log(`     Date: ${eventTime}`);
-          
-          if (eventType === 'FillLimitOrderEvent') {
-            console.log(`     Action: Fill`);
-            
-            // Display fill details
-            if (eventData.price) {
-              console.log(`     Fill Price: ${eventData.price}`);
-            }
-            if (eventData.size) {
-              console.log(`     Size: ${eventData.size}`);
-            }
-            if (eventData.fee) {
-              console.log(`     Fee: ${eventData.fee}`);
-            }
-          } else if (eventType === 'InstantCreateLimitOrderEvent') {
-            console.log(`     Action: Create Limit Order`);
-            
-            // Try to display limit price from instruction data if available
-            if (eventData.limitOrderInstructionData && eventData.limitOrderInstructionData.params) {
-              const params = eventData.limitOrderInstructionData.params;
-              if (params.price) {
-                console.log(`     Limit Price: $${BNToUSDRepresentation(params.price, USDC_DECIMALS)}`);
-              }
-              if (params.size) {
-                console.log(`     Size: $${BNToUSDRepresentation(params.size, USDC_DECIMALS)}`);
-              }
-              if (params.orderType !== undefined) {
-                console.log(`     Order Type: ${params.orderType === 0 ? 'Buy' : 'Sell'}`);
-              }
-            }
-          } else if (eventType === 'InstantUpdateLimitOrderEvent') {
-            console.log(`     Action: Update Limit Order`);
-            
-            // Similar to create, display updated parameters
-            if (eventData.limitOrderInstructionData && eventData.limitOrderInstructionData.params) {
-              const params = eventData.limitOrderInstructionData.params;
-              if (params.price) {
-                console.log(`     New Limit Price: $${BNToUSDRepresentation(params.price, USDC_DECIMALS)}`);
-              }
-              if (params.size) {
-                console.log(`     New Size: $${BNToUSDRepresentation(params.size, USDC_DECIMALS)}`);
-              }
-            }
-          }
-          
-          // Display position and pool info if available
-          if (eventData.positionKey) {
-            console.log(`     Position: ${eventData.positionKey.substring(0, 8)}...`);
-          }
-          if (eventData.pool) {
-            console.log(`     Pool: ${eventData.pool.substring(0, 8)}...`);
-          }
-        } 
-        else {
-          // Regular event display for non-limit order events
-          console.log(`  ${i+1}. ${eventType}`);
-          console.log(`     Date: ${eventTime}`);
-          console.log(`     Action: ${action}`);
-          console.log(`     Type: ${orderType}`);
-          
-          // Display token information
-          if (eventData.positionMint) {
-            const symbol = getSymbolFromMint(eventData.positionMint);
-            console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
-          }
-          
-          if (eventData.positionRequestMint) {
-            const symbol = getSymbolFromMint(eventData.positionRequestMint);
-            console.log(`     Using: ${symbol}${eventData.positionRequestMint ? ` (${eventData.positionRequestMint.substring(0, 8)}...)` : ''}`);
-          }
-          
-          // Get sizes - with special handling for liquidation events
-          let sizeUsd = 0;
-          if (eventType.includes('Liquidate')) {
-            // For liquidation events, use positionSizeUsd instead of sizeUsdDelta
-            sizeUsd = parseUsdValue(eventData.positionSizeUsd || "0");
-          } else {
-            sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
-          }
-          
-          const price = parseUsdValue(eventData.price || "0");
-          const notionalSize = price > 0 ? sizeUsd / price : 0;
-          
-          // Only show notional size for non-liquidation events
-          if (!eventType.includes('Liquidate')) {
-            console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
-          }
-          console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
-          console.log(`     Price: ${eventData.price || "N/A"}`);
-          
-          // Add payout information for decrease/liquidation events
-          if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
-            if (eventData.transferAmountUsd) {
-              console.log(`     Payout (USD): $${parseUsdValue(eventData.transferAmountUsd).toFixed(2)}`);
-            }
-            
-            if (eventData.transferToken) {
-              const tokenAmount = Number(eventData.transferToken);
-              const requestMint = eventData.positionRequestMint || eventData.desiredMint;
-              let tokenSymbol = "Unknown";
-              let decimals = 6; // Default to 6 decimals (USDC)
-              
-              // Try to determine token symbol and decimals
-              if (requestMint) {
-                // Known token addresses
-                if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
-                  tokenSymbol = "USDC";
-                  decimals = 6;
-                } else if (requestMint === "So11111111111111111111111111111111111111112") {
-                  tokenSymbol = "SOL";
-                  decimals = 9;
-                } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
-                  tokenSymbol = "WETH";
-                  decimals = 8;
-                }
-              }
-              
-              const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
-              console.log(`     Payout (Token): ${formattedAmount} ${tokenSymbol}`);
-            }
-          }
-          
-          // Handle fees display - with special handling for liquidation events
-          const fee = parseUsdValue(eventData.feeUsd || "0");
-          console.log(`     Fee: $${fee.toFixed(2)}`);
-          
-          if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
-            const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
-            console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
-          }
-          
-          // Add collateral information for relevant events - simplified
-          if (eventType.includes('Increase') || eventType.includes('Decrease')) {
-            const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
-            console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
-          }
-          
-          // Show profit/loss information for decrease events
-          if ((eventType.includes('Decrease') || eventType.includes('Liquidate')) && eventData.pnlDelta) {
-            const pnlDelta = parseUsdValue(eventData.pnlDelta);
-            console.log(`     PnL: $${pnlDelta.toFixed(2)} (${eventData.hasProfit ? 'Profit' : 'Loss'})`);
-          }
-        }
-      } 
-      // For pre-swap events
-      else if (eventType === 'IncreasePositionPreSwapEvent') {
+      // Special handling for PoolSwapEvent in trade events
+      if (eventType === 'PoolSwapEvent' || eventType === 'PoolSwapExactOutEvent') {
         console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
-        console.log(`     Transfer Amount: ${eventData.transferAmount || 'N/A'}`);
-        
-        // Find the corresponding increase event to show what tokens were swapped
-        const increaseEvent = trade.events.find(e => 
-          (e?.event?.name === 'IncreasePositionEvent' || e?.event?.name === 'InstantIncreasePositionEvent') && 
-          e?.tx.blockTime === eventTime
-        );
-        
-        if (increaseEvent?.event?.data) {
-          const requestMint = increaseEvent.event.data.positionRequestMint;
-          const collateralCustody = increaseEvent.event.data.positionCollateralCustody;
-          
-          if (requestMint && collateralCustody) {
-            console.log(`     Swapped: ${getSymbolFromMint(requestMint)} → ${getAssetNameFromCustody(collateralCustody)}`);
-          }
-        }
-      }
-      // For post-swap events
-      else if (eventType === 'DecreasePositionPostSwapEvent') {
-        console.log(`  ${i+1}. ${eventType}`);
-        console.log(`     Date: ${eventTime}`);
-        console.log(`     Swap Amount: ${eventData.swapAmount || 'N/A'}`);
-        
-        if (eventData.jupiterMinimumOut)
-          console.log(`     Jupiter Minimum Out: ${eventData.jupiterMinimumOut}`);
-        
-        // Find the corresponding decrease event to show what tokens were swapped
-        const decreaseEvent = trade.events.find(e => 
-          (e?.event?.name === 'DecreasePositionEvent' || e?.event?.name === 'InstantDecreasePositionEvent') && 
-          e?.tx.blockTime === eventTime
-        );
-        
-        if (decreaseEvent?.event?.data) {
-          const collateralCustody = decreaseEvent.event.data.positionCollateralCustody;
-          const requestMint = decreaseEvent.event.data.positionRequestMint;
-          
-          console.log(`     Swapped: ${getAssetNameFromCustody(collateralCustody)} → ${getSymbolFromMint(requestMint)}`);
-        }
-      }
-      // For pool swap events
-      else if (eventType === 'PoolSwapEvent' || eventType === 'PoolSwapExactOutEvent') {
-        console.log(`  ${i+1}. ${eventType}`);
-        console.log(`     Date: ${eventTime}`);
-        
-        const isExactOut = eventType === 'PoolSwapExactOutEvent';
         
         // Get tokens by custody addresses
         const receivingCustody = eventData.receivingCustodyKey || 'Unknown';
@@ -2074,17 +1856,6 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           console.log(`     Amount Out: ${formattedAmount} ${dispensingSymbol}`);
         }
         
-        // Show after-fee amounts
-        if (isExactOut && eventData.amountInAfterFees) {
-          const amountAfterFees = Number(eventData.amountInAfterFees);
-          const formattedAmount = formatTokenAmount(amountAfterFees, dispensingSymbol);
-          console.log(`     Amount Out After Fees: ${formattedAmount} ${dispensingSymbol}`);
-        } else if (!isExactOut && eventData.amountOutAfterFees) {
-          const amountAfterFees = Number(eventData.amountOutAfterFees);
-          const formattedAmount = formatTokenAmount(amountAfterFees, receivingSymbol);
-          console.log(`     Amount In After Fees: ${formattedAmount} ${receivingSymbol}`);
-        }
-        
         if (eventData.swapUsdAmount) {
           console.log(`     Swap USD Amount: ${eventData.swapUsdAmount}`);
         }
@@ -2093,80 +1864,125 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           const feeBpsNum = Number(eventData.feeBps);
           console.log(`     Fee: ${feeBpsNum / 100}% (${feeBpsNum} bps)`);
           
-          // Calculate actual fee amount
-          if (isExactOut && eventData.amountIn && eventData.amountInAfterFees) {
-            const feeAmount = Number(eventData.amountIn) - Number(eventData.amountInAfterFees);
+          // Calculate actual fee amount if available
+          if (eventData.amountOutAfterFees && eventData.amountOut) {
+            const feeAmount = Number(eventData.amountOut) - Number(eventData.amountOutAfterFees);
             const formattedFee = formatTokenAmount(feeAmount, dispensingSymbol);
             console.log(`     Fee Amount: ${formattedFee} ${dispensingSymbol}`);
-          } else if (!isExactOut && eventData.amountOut && eventData.amountOutAfterFees) {
-            const feeAmount = Number(eventData.amountOut) - Number(eventData.amountOutAfterFees);
-            const formattedFee = formatTokenAmount(feeAmount, receivingSymbol);
-            console.log(`     Fee Amount: ${formattedFee} ${receivingSymbol}`);
           }
         }
       }
+      // For regular events (not pool swap)
       else {
-        // Regular event display
+        // Determine if buy or sell
+        let action = "";
+        if (eventType.includes('Increase')) {
+          action = trade.positionSide === "Long" ? "Buy" : "Sell";
+        } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+          action = trade.positionSide === "Long" ? "Sell" : "Buy";
+        }
+        
+        // Determine if market or limit based on positionRequestType and event name
+        let orderType = "Market"; // Default to Market
+        if (eventType.includes('Instant')) {
+          // All Instant events are market orders by definition
+          orderType = "Market";
+        } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+          // For non-Instant events, check positionRequestType if available
+          if (eventData.positionRequestType !== undefined) {
+            orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+          }
+        } else if (eventType.includes('Liquidate')) {
+          // Liquidations are always forced market orders
+          orderType = "Market";
+        }
+        
         console.log(`  ${i+1}. ${eventType}`);
         console.log(`     Date: ${eventTime}`);
+        console.log(`     Action: ${action}`);
+        console.log(`     Type: ${orderType}`);
         
-        // For PoolSwapEvent, use the raw data and format appropriately
-        if (eventType === 'PoolSwapEvent' || eventType === 'PoolSwapExactOutEvent') {
-          const isExactOut = eventType === 'PoolSwapExactOutEvent';
-          
-          // Get tokens by custody addresses
-          const receivingCustody = eventData.receivingCustodyKey || 'Unknown';
-          const dispensingCustody = eventData.dispensingCustodyKey || 'Unknown';
-          
-          const receivingSymbol = getAssetNameFromCustody(receivingCustody);
-          const dispensingSymbol = getAssetNameFromCustody(dispensingCustody);
-          
-          // From user's perspective, the swap is reversed
-          console.log(`     Swap: ${receivingSymbol} → ${dispensingSymbol}`);
-          
-          if (eventData.swapUsdAmount) {
-            console.log(`     Swap Amount: ${eventData.swapUsdAmount}`);
-          }
-          
-          if (eventData.feeBps) {
-            const feeBpsNum = Number(eventData.feeBps);
-            console.log(`     Fee: ${feeBpsNum / 100}% (${feeBpsNum} bps)`);
-          }
+        // Display token information
+        if (eventData.positionMint) {
+          const symbol = getSymbolFromMint(eventData.positionMint);
+          console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
+        }
+        
+        if (eventData.positionRequestMint) {
+          const symbol = getSymbolFromMint(eventData.positionRequestMint);
+          console.log(`     Using: ${symbol}${eventData.positionRequestMint ? ` (${eventData.positionRequestMint.substring(0, 8)}...)` : ''}`);
+        }
+        
+        // Get sizes - with special handling for liquidation events
+        let sizeUsd = 0;
+        if (eventType.includes('Liquidate')) {
+          // For liquidation events, use positionSizeUsd instead of sizeUsdDelta
+          sizeUsd = parseUsdValue(eventData.positionSizeUsd || "0");
         } else {
-          // Only display action and order type for position events
-          // Determine if buy or sell
-          let action = "";
-          if (eventType.includes('Increase')) {
-            action = trade.positionSide === "Long" ? "Buy" : "Sell";
-          } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
-            action = trade.positionSide === "Long" ? "Sell" : "Buy";
+          sizeUsd = parseUsdValue(eventData.sizeUsdDelta || "0");
+        }
+        
+        const price = parseUsdValue(eventData.price || "0");
+        const notionalSize = price > 0 ? sizeUsd / price : 0;
+        
+        // Only show notional size for non-liquidation events
+        if (!eventType.includes('Liquidate')) {
+          console.log(`     Size (Notional): ${notionalSize.toFixed(6)} ${trade.asset || ''}`);
+        }
+        console.log(`     Size (USD): $${sizeUsd.toFixed(2)}`);
+        console.log(`     Price: ${eventData.price || "N/A"}`);
+        
+        // Add payout information for decrease/liquidation events
+        if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+          if (eventData.transferAmountUsd) {
+            console.log(`     Payout (USD): $${parseUsdValue(eventData.transferAmountUsd).toFixed(2)}`);
           }
           
-          // Determine if market or limit based on positionRequestType and event name
-          let orderType = "Market"; // Default to Market
-          if (eventType.includes('Instant')) {
-            // All Instant events are market orders by definition
-            orderType = "Market";
-          } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
-            // For non-Instant events, check positionRequestType if available
-            if (eventData.positionRequestType !== undefined) {
-              orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+          if (eventData.transferToken) {
+            const tokenAmount = Number(eventData.transferToken);
+            const requestMint = eventData.positionRequestMint || eventData.desiredMint;
+            let tokenSymbol = "Unknown";
+            let decimals = 6; // Default to 6 decimals (USDC)
+            
+            // Try to determine token symbol and decimals
+            if (requestMint) {
+              // Known token addresses
+              if (requestMint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+                tokenSymbol = "USDC";
+                decimals = 6;
+              } else if (requestMint === "So11111111111111111111111111111111111111112") {
+                tokenSymbol = "SOL";
+                decimals = 9;
+              } else if (requestMint === "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs") {
+                tokenSymbol = "WETH";
+                decimals = 8;
+              }
             }
-          } else if (eventType.includes('Liquidate')) {
-            // Liquidations are always forced market orders
-            orderType = "Market";
+            
+            const formattedAmount = (tokenAmount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 6 : 2);
+            console.log(`     Payout (Token): ${formattedAmount} ${tokenSymbol}`);
           }
-          
-          console.log(`     Action: ${action}`);
-          console.log(`     Type: ${orderType}`);
-          
-          // Display token information
-          if (eventData.positionMint) {
-            const symbol = getSymbolFromMint(eventData.positionMint);
-            console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
-          }
-          
-          // ... rest of the existing code for position events ...
+        }
+        
+        // Handle fees display - with special handling for liquidation events
+        const fee = parseUsdValue(eventData.feeUsd || "0");
+        console.log(`     Fee: $${fee.toFixed(2)}`);
+        
+        if (eventType.includes('Liquidate') && eventData.liquidationFeeUsd) {
+          const liquidationFee = parseUsdValue(eventData.liquidationFeeUsd);
+          console.log(`     Liquidation Fee: $${liquidationFee.toFixed(2)}`);
+        }
+        
+        // Add collateral information for relevant events - simplified
+        if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+          const collateralUsd = parseUsdValue(eventData.collateralUsdDelta || "0");
+          console.log(`     Collateral (USD): $${collateralUsd.toFixed(2)}`);
+        }
+        
+        // Show profit/loss information for decrease events
+        if ((eventType.includes('Decrease') || eventType.includes('Liquidate')) && eventData.pnlDelta) {
+          const pnlDelta = parseUsdValue(eventData.pnlDelta);
+          console.log(`     PnL: $${pnlDelta.toFixed(2)} (${eventData.hasProfit ? 'Profit' : 'Loss'})`);
         }
       }
     }
