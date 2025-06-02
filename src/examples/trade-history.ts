@@ -1041,6 +1041,8 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     evt.event?.name === 'InstantIncreasePositionEvent' ||
     evt.event?.name === 'InstantDecreasePositionEvent' ||
     evt.event?.name === 'LiquidateFullPositionEvent' ||
+    evt.event?.name === 'InstantCreateTpslEvent' || // Add TP/SL events
+    evt.event?.name === 'InstantUpdateTpslEvent' || // Add TP/SL events
     evt.event?.name === 'FillLimitOrderEvent'  // Add FillLimitOrderEvent as a main event
   );
 
@@ -1258,6 +1260,29 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
       
       // Increment lifecycle counter for this position
       lifecycleCounters.set(positionKey, lifecycleCount + 1);
+    }
+    // Handle TP/SL events
+    else if (name === 'InstantCreateTpslEvent' || name === 'InstantUpdateTpslEvent') {
+      // For TP/SL events, we need to find the active trade for this position
+      if (!activeTrade) {
+        console.error(`Error: Found TP/SL event for position ${positionKey} but no active trade was found.`);
+        continue;
+      }
+
+      // Add all events from this timestamp
+      allEventsAtTimestamp.forEach(evt => {
+        if (evt && evt.event && evt.tx && evt.event.name) {
+          // Check if this event is already in the trade's events
+          const isDuplicate = activeTrade.events.some(existingEvt => 
+            existingEvt?.tx.signature === evt.tx?.signature && 
+            existingEvt?.event?.name === evt.event?.name
+          );
+          
+          if (!isDuplicate) {
+            activeTrade.events.push(evt);
+          }
+        }
+      });
     }
   }
 
@@ -1516,6 +1541,8 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
   const roi = trade.roi ? `${trade.roi.toFixed(2)}%` : "N/A";
   
   console.log(`\nTrade #${index + 1} (ID: ${trade.id}):`);
+  
+  // Debug - Check if InstantCreateTpslEvent is in the events array
   
   // Replace Position field with Symbol
   if (trade.asset) {
@@ -1880,7 +1907,36 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           }
         }
       }
-      // For regular events (not pool swap)
+      // Special handling for TP/SL events
+      else if (eventType === 'InstantCreateTpslEvent' || eventType === 'InstantUpdateTpslEvent') {
+        console.log(`  ${i+1}. ${eventType}`);
+        console.log(`     Date: ${eventTime}`);
+        console.log(`     TP/SL Setting:`);
+        
+        // Determine if Take Profit or Stop Loss
+        const isTakeProfit = eventData.tpslTriggerAboveThreshold === true;
+        const orderType = isTakeProfit ? "Take Profit" : "Stop Loss";
+        console.log(`     Order Type: ${orderType}`);
+        
+        // Show trigger price
+        if (eventData.tpslTriggerPrice) {
+          console.log(`     Trigger Price: ${eventData.tpslTriggerPrice}`);
+        }
+        
+        // Show size percentage
+        const sizePercent = eventData.tpslEntirePosition ? "100%" : "50%";
+        console.log(`     Size: ${sizePercent} of position`);
+        
+        // Show specific TP/SL values if available
+        if (isTakeProfit && eventData.takeProfitPrice) {
+          console.log(`     Take Profit Price: ${eventData.takeProfitPrice}`);
+          console.log(`     Take Profit Size: ${eventData.takeProfitSizePercent / 100}% of position`);
+        } else if (!isTakeProfit && eventData.stopLossPrice) {
+          console.log(`     Stop Loss Price: ${eventData.stopLossPrice}`);
+          console.log(`     Stop Loss Size: ${eventData.stopLossSizePercent / 100}% of position`);
+        }
+      }
+      // For regular events (not pool swap or TP/SL)
       else {
         // Determine if buy or sell
         let action = "";
