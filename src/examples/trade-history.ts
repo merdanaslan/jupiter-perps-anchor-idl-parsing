@@ -385,9 +385,10 @@ export async function getPositionEvents() {
       data?.event?.name === "DecreasePositionPostSwapEvent" ||
       data?.event?.name === "InstantCreateTpslEvent" ||
       data?.event?.name === "InstantUpdateTpslEvent" ||
-      data?.event?.name === "InstantCreateLimitOrderEvent" ||  // Add limit order events
+      data?.event?.name === "InstantCreateLimitOrderEvent" ||
       data?.event?.name === "InstantUpdateLimitOrderEvent" ||
-      data?.event?.name === "FillLimitOrderEvent"
+      data?.event?.name === "PoolSwapEvent" ||
+      data?.event?.name === "PoolSwapExactOutEvent"
   );
   
   console.log(`Found ${filteredEvents.length} relevant position events`);
@@ -1440,7 +1441,13 @@ export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[
           console.log("Limit Order Instruction Data:");
           console.log(limitOrderInstructionData);
         }
-      } else {
+      }
+      // Add special handling for pool swap events
+      else if (evt.event.name === 'PoolSwapEvent' || evt.event.name === 'PoolSwapExactOutEvent') {
+        // Just display the raw data as fetched/parsed
+        console.log("Event Data:", evt.event.data);
+      }
+      else {
         // Regular event display
         console.log("Data:", evt.event.data);
       }
@@ -2036,6 +2043,132 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           console.log(`     Swapped: ${getAssetNameFromCustody(collateralCustody)} → ${getSymbolFromMint(requestMint)}`);
         }
       }
+      // For pool swap events
+      else if (eventType === 'PoolSwapEvent' || eventType === 'PoolSwapExactOutEvent') {
+        console.log(`  ${i+1}. ${eventType}`);
+        console.log(`     Date: ${eventTime}`);
+        
+        const isExactOut = eventType === 'PoolSwapExactOutEvent';
+        
+        // Get tokens by custody addresses
+        const receivingCustody = eventData.receivingCustodyKey || 'Unknown';
+        const dispensingCustody = eventData.dispensingCustodyKey || 'Unknown';
+        
+        const receivingSymbol = getAssetNameFromCustody(receivingCustody);
+        const dispensingSymbol = getAssetNameFromCustody(dispensingCustody);
+        
+        // From user's perspective, the swap is reversed
+        console.log(`     Swap: ${receivingSymbol} → ${dispensingSymbol}`);
+        console.log(`     Pool: ${eventData.poolKey ? eventData.poolKey.substring(0, 8) + '...' : 'Unknown'}`);
+        
+        // Format amounts with appropriate decimals
+        if (eventData.amountOut) {
+          const amountOut = Number(eventData.amountOut);
+          const formattedAmount = formatTokenAmount(amountOut, receivingSymbol);
+          console.log(`     Amount In: ${formattedAmount} ${receivingSymbol}`);
+        }
+        
+        if (eventData.amountIn) {
+          const amountIn = Number(eventData.amountIn);
+          const formattedAmount = formatTokenAmount(amountIn, dispensingSymbol);
+          console.log(`     Amount Out: ${formattedAmount} ${dispensingSymbol}`);
+        }
+        
+        // Show after-fee amounts
+        if (isExactOut && eventData.amountInAfterFees) {
+          const amountAfterFees = Number(eventData.amountInAfterFees);
+          const formattedAmount = formatTokenAmount(amountAfterFees, dispensingSymbol);
+          console.log(`     Amount Out After Fees: ${formattedAmount} ${dispensingSymbol}`);
+        } else if (!isExactOut && eventData.amountOutAfterFees) {
+          const amountAfterFees = Number(eventData.amountOutAfterFees);
+          const formattedAmount = formatTokenAmount(amountAfterFees, receivingSymbol);
+          console.log(`     Amount In After Fees: ${formattedAmount} ${receivingSymbol}`);
+        }
+        
+        if (eventData.swapUsdAmount) {
+          console.log(`     Swap USD Amount: ${eventData.swapUsdAmount}`);
+        }
+        
+        if (eventData.feeBps) {
+          const feeBpsNum = Number(eventData.feeBps);
+          console.log(`     Fee: ${feeBpsNum / 100}% (${feeBpsNum} bps)`);
+          
+          // Calculate actual fee amount
+          if (isExactOut && eventData.amountIn && eventData.amountInAfterFees) {
+            const feeAmount = Number(eventData.amountIn) - Number(eventData.amountInAfterFees);
+            const formattedFee = formatTokenAmount(feeAmount, dispensingSymbol);
+            console.log(`     Fee Amount: ${formattedFee} ${dispensingSymbol}`);
+          } else if (!isExactOut && eventData.amountOut && eventData.amountOutAfterFees) {
+            const feeAmount = Number(eventData.amountOut) - Number(eventData.amountOutAfterFees);
+            const formattedFee = formatTokenAmount(feeAmount, receivingSymbol);
+            console.log(`     Fee Amount: ${formattedFee} ${receivingSymbol}`);
+          }
+        }
+      }
+      else {
+        // Regular event display
+        console.log(`  ${i+1}. ${eventType}`);
+        console.log(`     Date: ${eventTime}`);
+        
+        // For PoolSwapEvent, use the raw data and format appropriately
+        if (eventType === 'PoolSwapEvent' || eventType === 'PoolSwapExactOutEvent') {
+          const isExactOut = eventType === 'PoolSwapExactOutEvent';
+          
+          // Get tokens by custody addresses
+          const receivingCustody = eventData.receivingCustodyKey || 'Unknown';
+          const dispensingCustody = eventData.dispensingCustodyKey || 'Unknown';
+          
+          const receivingSymbol = getAssetNameFromCustody(receivingCustody);
+          const dispensingSymbol = getAssetNameFromCustody(dispensingCustody);
+          
+          // From user's perspective, the swap is reversed
+          console.log(`     Swap: ${receivingSymbol} → ${dispensingSymbol}`);
+          
+          if (eventData.swapUsdAmount) {
+            console.log(`     Swap Amount: ${eventData.swapUsdAmount}`);
+          }
+          
+          if (eventData.feeBps) {
+            const feeBpsNum = Number(eventData.feeBps);
+            console.log(`     Fee: ${feeBpsNum / 100}% (${feeBpsNum} bps)`);
+          }
+        } else {
+          // Only display action and order type for position events
+          // Determine if buy or sell
+          let action = "";
+          if (eventType.includes('Increase')) {
+            action = trade.positionSide === "Long" ? "Buy" : "Sell";
+          } else if (eventType.includes('Decrease') || eventType.includes('Liquidate')) {
+            action = trade.positionSide === "Long" ? "Sell" : "Buy";
+          }
+          
+          // Determine if market or limit based on positionRequestType and event name
+          let orderType = "Market"; // Default to Market
+          if (eventType.includes('Instant')) {
+            // All Instant events are market orders by definition
+            orderType = "Market";
+          } else if (eventType.includes('Increase') || eventType.includes('Decrease')) {
+            // For non-Instant events, check positionRequestType if available
+            if (eventData.positionRequestType !== undefined) {
+              orderType = eventData.positionRequestType === 0 ? "Market" : "Limit";
+            }
+          } else if (eventType.includes('Liquidate')) {
+            // Liquidations are always forced market orders
+            orderType = "Market";
+          }
+          
+          console.log(`     Action: ${action}`);
+          console.log(`     Type: ${orderType}`);
+          
+          // Display token information
+          if (eventData.positionMint) {
+            const symbol = getSymbolFromMint(eventData.positionMint);
+            console.log(`     Trading: ${symbol}${eventData.positionMint ? ` (${eventData.positionMint.substring(0, 8)}...)` : ''}`);
+          }
+          
+          // ... rest of the existing code for position events ...
+        }
+      }
     }
   });
 }
@@ -2060,6 +2193,34 @@ function getSymbolFromMint(mintAddress: string | undefined): string {
     default:
       return mintAddress.substring(0, 6) + "...";
   }
+}
+
+// Helper function to format token amounts with appropriate decimals
+function formatTokenAmount(amount: number, tokenSymbol: string): string {
+  // Get decimals based on token
+  let decimals = 6; // Default (USDC, USDT)
+  
+  switch(tokenSymbol) {
+    case "SOL":
+      decimals = 9;
+      break;
+    case "ETH":
+    case "WETH":
+      decimals = 8;
+      break;
+    case "BTC":
+    case "wBTC":
+      decimals = 8;
+      break;
+    case "USDC":
+    case "USDT":
+      decimals = 6;
+      break;
+  }
+  
+  // Format the amount
+  const formattedAmount = (amount / Math.pow(10, decimals)).toFixed(decimals === 9 ? 3 : 2);
+  return formattedAmount;
 }
 
 // Add helper function to get asset name from custody pubkey if not already present
