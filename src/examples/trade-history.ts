@@ -1839,20 +1839,21 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         const receivingSymbol = getAssetNameFromCustody(receivingCustody);
         const dispensingSymbol = getAssetNameFromCustody(dispensingCustody);
         
-        // From user's perspective, the swap is reversed
+        // Show the swap direction based on custody keys
         console.log(`     Swap: ${receivingSymbol} → ${dispensingSymbol}`);
         console.log(`     Pool: ${eventData.poolKey ? eventData.poolKey.substring(0, 8) + '...' : 'Unknown'}`);
         
-        // Format amounts with appropriate decimals
-        if (eventData.amountOut) {
-          const amountOut = Number(eventData.amountOut);
-          const formattedAmount = formatTokenAmount(amountOut, receivingSymbol);
+        // Format amounts with appropriate decimals - match amountIn with receivingCustody (token going in)
+        if (eventData.amountIn) {
+          const amountIn = Number(eventData.amountIn);
+          const formattedAmount = formatTokenAmount(amountIn, receivingSymbol);
           console.log(`     Amount In: ${formattedAmount} ${receivingSymbol}`);
         }
         
-        if (eventData.amountIn) {
-          const amountIn = Number(eventData.amountIn);
-          const formattedAmount = formatTokenAmount(amountIn, dispensingSymbol);
+        // Match amountOut with dispensingCustody (token coming out)
+        if (eventData.amountOut) {
+          const amountOut = Number(eventData.amountOut);
+          const formattedAmount = formatTokenAmount(amountOut, dispensingSymbol);
           console.log(`     Amount Out: ${formattedAmount} ${dispensingSymbol}`);
         }
         
@@ -2057,7 +2058,8 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
     case CUSTODY_PUBKEY.USDT:
       return "USDT";
     default:
-      return "Unknown";
+      // Return a shortened version of the pubkey for unknown custody addresses
+      return `${custodyPubkey.substring(0, 6)}...`;
   }
 }
 
