@@ -1857,6 +1857,13 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           console.log(`     Amount Out: ${formattedAmount} ${dispensingSymbol}`);
         }
         
+        // Show amount out after fees
+        if (eventData.amountOutAfterFees) {
+          const amountOutAfterFees = Number(eventData.amountOutAfterFees);
+          const formattedAmount = formatTokenAmount(amountOutAfterFees, dispensingSymbol);
+          console.log(`     Amount Out After Fees: ${formattedAmount} ${dispensingSymbol}`);
+        }
+        
         if (eventData.swapUsdAmount) {
           console.log(`     Swap USD Amount: ${eventData.swapUsdAmount}`);
         }
