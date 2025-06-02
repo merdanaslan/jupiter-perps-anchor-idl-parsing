@@ -1291,6 +1291,27 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     trade.events.sort((a, b) => {
       const aTime = a?.tx.blockTime ? new Date(a.tx.blockTime).getTime() : 0;
       const bTime = b?.tx.blockTime ? new Date(b.tx.blockTime).getTime() : 0;
+      
+      // If timestamps are the same, use event type to determine order
+      if (aTime === bTime) {
+        // Prioritize decrease position events over pool swap events
+        if (a?.event?.name === 'DecreasePositionEvent' && b?.event?.name === 'PoolSwapEvent') {
+          return -1; // a comes before b
+        }
+        if (a?.event?.name === 'PoolSwapEvent' && b?.event?.name === 'DecreasePositionEvent') {
+          return 1; // b comes before a
+        }
+        
+        // Same logic for instant decrease position events
+        if (a?.event?.name === 'InstantDecreasePositionEvent' && b?.event?.name === 'PoolSwapEvent') {
+          return -1;
+        }
+        if (a?.event?.name === 'PoolSwapEvent' && b?.event?.name === 'InstantDecreasePositionEvent') {
+          return 1;
+        }
+      }
+      
+      // Default to sorting by timestamp
       return aTime - bTime;
     });
     return trade;
