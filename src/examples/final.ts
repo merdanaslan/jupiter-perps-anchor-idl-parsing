@@ -59,9 +59,8 @@ interface ITrade {
 // First, update the discriminators to match the standard Anchor format
 export const TPSL_INSTRUCTION_DISCRIMINATORS = {
   // For Anchor programs, the instruction discriminator is first 8 bytes of sha256 hash of the instruction name
-  // Try different formats for the instruction name
   instantCreateTpsl: Buffer.from([117, 98, 66, 127, 30, 50, 73, 185]), // Known discriminator from our debug output
-  instantUpdateTpsl: Buffer.from([215, 61, 230, 134, 70, 19, 40, 15])  // Placeholder - we'll update this if we find it
+  instantUpdateTpsl: Buffer.from([144, 228, 114, 37, 165, 242, 111, 101])  // Found from debug output
 };
 
 // Add discriminators for limit order instructions
@@ -125,31 +124,87 @@ function formatEventData(event: any): any {
   };
 }
 
-// Update the getPositionEvents function to use fetchTransactionWithRetry
-export async function getPositionEvents() {
+// Helper function to parse date in DD.MM.YYYY format
+function parseDate(dateString: string): Date {
+  const [day, month, year] = dateString.split('.').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+}
+
+// Helper function to check if we should continue fetching based on date
+function shouldContinueFetching(blockTime: number | null, targetDate: Date): boolean {
+  if (!blockTime) return true; // If no blockTime, continue fetching
+  const txDate = new Date(blockTime * 1000);
+  return txDate >= targetDate;
+}
+
+export async function getPositionEvents(targetDateString?: string) {
   // Use specific position PDA
   const positionPDA = new PublicKey("5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D");
   
-  // Maximum transaction signatures to return (between 1 and 1,000).
-  console.log("Getting signatures...");
-  const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
-    positionPDA,
-    { limit: 10 } // Only fetch 10 transactions AND minContextSlot for custom timeinterval 
-  );
+  // Parse target date (default to 30 days ago if not provided)
+  const targetDate = targetDateString 
+    ? parseDate(targetDateString)
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+  
+  console.log(`Getting signatures from now until ${targetDate.toLocaleDateString('en-GB')}...`);
+  
+  const allSignatures: any[] = [];
+  let beforeSignature: string | undefined = undefined;
+  let hasMoreTransactions = true;
+  let totalFetched = 0;
+  
+  // Fetch transactions in batches until we reach the target date
+  while (hasMoreTransactions && totalFetched < 1000) { // Safety limit of 1000 transactions
+    const options: any = { limit: 100 }; // Fetch 100 at a time for better performance
+    if (beforeSignature) {
+      options.before = beforeSignature;
+    }
+    
+    const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
+      positionPDA,
+      options
+    );
 
-  if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
-    console.log("No transactions found for this position");
+    if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
+      console.log("No more transactions found");
+      break;
+    }
+    
+    totalFetched += confirmedSignatureInfos.length;
+    console.log(`Fetched ${confirmedSignatureInfos.length} signatures (total: ${totalFetched})`);
+    
+    // Check if we've reached our target date
+    for (const sigInfo of confirmedSignatureInfos) {
+      const blockTime = sigInfo.blockTime ?? null;
+      if (!shouldContinueFetching(blockTime, targetDate)) {
+        console.log(`Reached target date ${targetDate.toLocaleDateString('en-GB')}, stopping fetch`);
+        hasMoreTransactions = false;
+        break;
+      }
+      allSignatures.push(sigInfo);
+    }
+    
+    // Set up for next batch
+    if (hasMoreTransactions && confirmedSignatureInfos.length === 100) {
+      beforeSignature = confirmedSignatureInfos[confirmedSignatureInfos.length - 1].signature;
+    } else {
+      hasMoreTransactions = false;
+    }
+  }
+
+  if (allSignatures.length === 0) {
+    console.log("No transactions found for this position in the specified date range");
     return [];
   }
   
-  console.log(`Found ${confirmedSignatureInfos.length} transactions`);
+  console.log(`Found ${allSignatures.length} transactions within date range`);
   
-  // Process ONE transaction at a time with longer delays
+  // Process transactions with our existing logic
   const allEvents = [];
   
-  for (let i = 0; i < confirmedSignatureInfos.length; i++) {
-    if (confirmedSignatureInfos[i].err) {
-      console.log(`Skipping failed transaction: ${confirmedSignatureInfos[i].signature}`);
+  for (let i = 0; i < allSignatures.length; i++) {
+    if (allSignatures[i].err) {
+      console.log(`Skipping failed transaction: ${allSignatures[i].signature}`);
       continue;
     }
     
@@ -160,10 +215,10 @@ export async function getPositionEvents() {
     }
     
     try {
-      console.log(`Processing transaction ${i+1}/${confirmedSignatureInfos.length}: ${confirmedSignatureInfos[i].signature}`);
+      console.log(`Processing transaction ${i+1}/${allSignatures.length}: ${allSignatures[i].signature}`);
       
       // Use our retry function
-      const tx = await fetchTransactionWithRetry(confirmedSignatureInfos[i].signature);
+      const tx = await fetchTransactionWithRetry(allSignatures[i].signature);
       
       if (!tx || !tx.meta || !tx.meta.innerInstructions) {
         console.log("No inner instructions found in transaction");
@@ -193,7 +248,7 @@ export async function getPositionEvents() {
             const eventWithTx = {
               event: formattedEvent,
               tx: {
-                signature: confirmedSignatureInfos[i].signature,
+                signature: allSignatures[i].signature,
                 blockTime: tx.blockTime 
                   ? new Date(tx.blockTime * 1000).toISOString()
                   : null,
@@ -383,12 +438,9 @@ export async function getPositionEvents() {
       data?.event?.name === "LiquidateFullPositionEvent" ||
       data?.event?.name === "IncreasePositionPreSwapEvent" ||
       data?.event?.name === "DecreasePositionPostSwapEvent" ||
-      data?.event?.name === "InstantCreateTpslEvent" ||
-      data?.event?.name === "InstantUpdateTpslEvent" ||
-      data?.event?.name === "InstantCreateLimitOrderEvent" ||
-      data?.event?.name === "InstantUpdateLimitOrderEvent" ||
-      data?.event?.name === "PoolSwapEvent" ||
-      data?.event?.name === "PoolSwapExactOutEvent"
+      data?.event?.name === "InstantCreateTpslEvent" || // Add TP/SL events
+      data?.event?.name === "InstantUpdateTpslEvent" || // Add TP/SL events
+      data?.event?.name === "FillLimitOrderEvent"  // Add FillLimitOrderEvent as a main event
   );
   
   console.log(`Found ${filteredEvents.length} relevant position events`);
@@ -509,323 +561,77 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
       
       // Check if this is a Jupiter Perpetuals instruction
       if (programIdStr === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
-        console.log(`Found Jupiter Perpetuals instruction #${i+1}`);
-        
         try {
           // Get the instruction data
           const data = Buffer.from(ix.data);
           
           // Check the discriminator (first 8 bytes)
           const discriminator = data.slice(0, 8);
-          console.log(`Instruction discriminator: [${Array.from(discriminator).join(', ')}]`);
           
-          // Try all possible discriminator formats
-          // Standard Anchor format without namespace
-          const stdCreateDiscr = Buffer.from(utils.sha256.hash("instant_create_tpsl").slice(0, 8));
-          const stdUpdateDiscr = Buffer.from(utils.sha256.hash("instant_update_tpsl").slice(0, 8));
+          const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
+          const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
           
-          // With capital first letter (common convention)
-          const capCreateDiscr = Buffer.from(utils.sha256.hash("Instant_create_tpsl").slice(0, 8));
-          const capUpdateDiscr = Buffer.from(utils.sha256.hash("Instant_update_tpsl").slice(0, 8));
-          
-          // With camelCase (another common convention)
-          const camelCreateDiscr = Buffer.from(utils.sha256.hash("instantCreateTpsl").slice(0, 8));
-          const camelUpdateDiscr = Buffer.from(utils.sha256.hash("instantUpdateTpsl").slice(0, 8));
-          
-          // With snake_case (another common convention)
-          const snakeCreateDiscr = Buffer.from(utils.sha256.hash("instant_create_tpsl").slice(0, 8));
-          const snakeUpdateDiscr = Buffer.from(utils.sha256.hash("instant_update_tpsl").slice(0, 8));
-          
-          // Log all possible discriminators we're checking
-          console.log("Checking against these discriminators:");
-          console.log("Standard create:", Array.from(stdCreateDiscr));
-          console.log("Standard update:", Array.from(stdUpdateDiscr));
-          console.log("Capitalized create:", Array.from(capCreateDiscr));
-          console.log("Capitalized update:", Array.from(capUpdateDiscr));
-          console.log("CamelCase create:", Array.from(camelCreateDiscr));
-          console.log("CamelCase update:", Array.from(camelUpdateDiscr));
-          console.log("Snake_case create:", Array.from(snakeCreateDiscr));
-          console.log("Snake_case update:", Array.from(snakeUpdateDiscr));
-          
-          // Check if the discriminator matches any of our possible formats
-          const isCreateTpsl = 
-            Buffer.compare(discriminator, stdCreateDiscr) === 0 ||
-            Buffer.compare(discriminator, capCreateDiscr) === 0 ||
-            Buffer.compare(discriminator, camelCreateDiscr) === 0 ||
-            Buffer.compare(discriminator, snakeCreateDiscr) === 0;
-            
-          const isUpdateTpsl = 
-            Buffer.compare(discriminator, stdUpdateDiscr) === 0 ||
-            Buffer.compare(discriminator, capUpdateDiscr) === 0 ||
-            Buffer.compare(discriminator, camelUpdateDiscr) === 0 ||
-            Buffer.compare(discriminator, snakeUpdateDiscr) === 0;
-
-          // Additional check - if the discriminator from the transaction matches what we saw
-          // When we inspected the output
-          const knownDiscriminator = Buffer.from([117, 98, 66, 127, 30, 50, 73, 185]);
-          const isKnownDiscriminator = Buffer.compare(discriminator, knownDiscriminator) === 0;
-          if (isKnownDiscriminator) {
-            console.log("Found instruction with known discriminator - this might be our TP/SL instruction");
-            
-            // Try to parse it as if it were a TP/SL instruction
-            try {
-              // Assume it's a TP/SL instruction and try to parse the data
-              const instructionDataBuffer = data.slice(8);
-              console.log(`Instruction data length: ${instructionDataBuffer.length} bytes`);
-              
-              // Dump the entire instruction data for analysis
-              console.log("Instruction data:", Array.from(instructionDataBuffer));
-              
-              // Attempt to decode it as a TP/SL instruction
-              if (instructionDataBuffer.length >= 24) { // Enough data for our expected fields
-                let offset = 0;
-                
-                // Try different structures
-                
-                // Attempt 1: Skip the first 16 bytes (assuming they're collateralUsdDelta and sizeUsdDelta)
-                offset = 16;
-                
-                // Extract triggerPrice
-                const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                console.log(`Potential triggerPrice: ${triggerPrice.toString()} ($${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)})`);
-                offset += 8;
-                
-                // Read a potential boolean value
-                if (offset < instructionDataBuffer.length) {
-                  const potentialBool1 = instructionDataBuffer[offset];
-                  console.log(`Potential triggerAboveThreshold: ${potentialBool1} (${potentialBool1 === 1 ? 'true' : 'false'})`);
-                  offset += 1;
-                }
-                
-                // Read another potential boolean value
-                if (offset < instructionDataBuffer.length) {
-                  const potentialBool2 = instructionDataBuffer[offset];
-                  console.log(`Potential entirePosition: ${potentialBool2} (${potentialBool2 === 1 ? 'true' : 'false'})`);
-                }
-                
-                // Let's try a different approach - let's just log all potential price values 
-                // in the buffer (assuming they're 8-byte BNs)
-                console.log("All potential price values in the buffer:");
-                for (let j = 0; j + 8 <= instructionDataBuffer.length; j += 8) {
-                  const val = new BN(instructionDataBuffer.slice(j, j + 8), 'le');
-                  const usdVal = BNToUSDRepresentation(val, USDC_DECIMALS);
-                  console.log(`Offset ${j}: ${val.toString()} ($${usdVal})`);
-                }
-                
-                // Construct a tpsl data object if we're confident
-                if (offset >= 25 && instructionDataBuffer[24] <= 1 && instructionDataBuffer[25] <= 1) {
-                  // Looks like we found a valid structure
-                  const triggerAboveThreshold = instructionDataBuffer[24] === 1;
-                  const entirePosition = instructionDataBuffer[25] === 1;
-                  
-                  return {
-                    instructionName: 'instantCreateTpsl', // Assume create for now
-                    params: {
-                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                      takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
-                      stopLossSizePct: entirePosition ? 10000 : 5000
-                    }
-                  };
-                }
-              }
-            } catch (e) {
-              console.error(`Error parsing instruction with known discriminator: ${e instanceof Error ? e.message : String(e)}`);
-            }
-          }
-          
-          // Try the original discriminators as well
           if (isCreateTpsl || isUpdateTpsl) {
-            // This is a TP/SL instruction
             console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} instruction`);
             
-            // Now we need to decode the instruction data using Anchor's IDL
-            try {
-              // Use Anchor's BorshCoder to decode the instruction data
-              const ixName = isCreateTpsl ? "instantCreateTpsl" : "instantUpdateTpsl";
-              let decoded;
-              try {
-                // Decode the instruction data after the discriminator
-                const dataAfterDiscriminator = data.slice(8);
-                const args = JUPITER_PERPETUALS_PROGRAM.coder.types.decode(
-                  isCreateTpsl ? "InstantCreateTpslParams" : "InstantUpdateTpslParams", 
-                  dataAfterDiscriminator
-                );
-                decoded = { name: ixName, data: args };
-              } catch (err) {
-                console.log(`Failed to decode ${ixName} instruction:`, err);
-                continue;
-              }
-              
-              // Format the params according to what we need
-              let tpslParams = null;
-              
-              if (isCreateTpsl) {
-                // Extract from decoded args
-                const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
-                
-                // Map to our format - take profit is triggerAboveThreshold=true, stop loss is triggerAboveThreshold=false
-                tpslParams = {
-                  instructionName: 'instantCreateTpsl',
-                  params: {
-                    takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                    stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                    takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),  // 100% by default
-                    stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()     // 100% by default
-                  }
-                };
-                
-                console.log(`Extracted TP/SL data:`, tpslParams);
-                return tpslParams;
-              } 
-              else if (isUpdateTpsl) {
-                // Extract fields similarly
-                const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
-                
-                tpslParams = {
-                  instructionName: 'instantUpdateTpsl',
-                  params: {
-                    takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                    stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                    takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
-                    stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
-                  }
-                };
-                
-                console.log(`Extracted TP/SL data:`, tpslParams);
-                return tpslParams;
-              }
-            } catch (error) {
-              console.error(`Error decoding instruction data: ${error instanceof Error ? error.message : String(error)}`);
+            // Parse TP/SL parameters from buffer
+            const instructionDataBuffer = data.slice(8);
+            let offset = 0;
+            
+            // Read collateralUsdDelta (u64/BN)
+            const collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+            offset += 8;
+            
+            // Read sizeUsdDelta (u64/BN)
+            const sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+            offset += 8;
+            
+            // Read triggerPrice (u64/BN)
+            const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+            offset += 8;
+            
+            // Read triggerAboveThreshold (bool) - 1 byte
+            const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+            offset += 1;
+            
+            // Read entirePosition (bool) - 1 byte
+            const entirePosition = instructionDataBuffer[offset] === 1;
+            offset += 1;
+            
+            // Read counter (u64/BN) if available
+            let counter = new BN(0);
+            if (offset + 8 <= instructionDataBuffer.length) {
+              counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
             }
+            
+            // Read requestTime (i64/BN) if available
+            let requestTime = new BN(0);
+            if (offset + 8 <= instructionDataBuffer.length) {
+              requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+            }
+            
+            return {
+              instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
+              params: {
+                collateralUsdDelta,
+                sizeUsdDelta,
+                triggerPrice,
+                triggerAboveThreshold,
+                entirePosition,
+                counter,
+                requestTime,
+                // For convenience, also include the interpreted values
+                takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
+                stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
+                takeProfitSizePct: entirePosition ? 10000 : 5000,
+                stopLossSizePct: entirePosition ? 10000 : 5000
+              }
+            };
           }
-          
-          // Return null if we didn't find a matching instruction
-          return null;
         } catch (err) {
           console.log("Error parsing instruction data:", err);
           return null;
-        }
-      }
-    }
-    
-    // If we didn't find the instruction in the main instructions, check inner instructions
-    if (tx.meta?.innerInstructions && tx.meta.innerInstructions.length > 0) {
-      console.log("Checking inner instructions...");
-      
-      for (let i = 0; i < tx.meta.innerInstructions.length; i++) {
-        const innerIxSet = tx.meta.innerInstructions[i];
-        
-        for (let j = 0; j < innerIxSet.instructions.length; j++) {
-          const innerIx = innerIxSet.instructions[j];
-          
-          try {
-            // We need to convert base58 encoded data to Buffer
-            const data = utils.bytes.bs58.decode(innerIx.data);
-            
-            // Skip if too short
-            if (data.length < 8) continue;
-            
-            // Check discriminator
-            const discriminator = data.slice(0, 8);
-            const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
-            const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
-            
-            if (isCreateTpsl || isUpdateTpsl) {
-              console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} in inner instructions`);
-              
-              try {
-                // Try to decode using IDL
-                const ixName = isCreateTpsl ? "instantCreateTpsl" : "instantUpdateTpsl";
-                let decoded;
-                try {
-                  // Use the BorshCoder directly to decode the args
-                  const dataAfterDiscriminator = data.slice(8);
-                  const args = JUPITER_PERPETUALS_PROGRAM.coder.types.decode(
-                    isCreateTpsl ? "InstantCreateTpslParams" : "InstantUpdateTpslParams",
-                    dataAfterDiscriminator
-                  );
-                  
-                  decoded = { name: ixName, data: args };
-                } catch (err) {
-                  console.log(`Failed to decode inner ${ixName} instruction:`, err);
-                  continue;
-                }
-                
-                // Create our format
-                if (isCreateTpsl) {
-                  const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
-                  
-                  const tpslParams = {
-                    instructionName: 'instantCreateTpsl',
-                    params: {
-                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                      takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
-                      stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
-                    }
-                  };
-                  
-                  console.log(`Extracted inner TP/SL data:`, tpslParams);
-                  return tpslParams;
-                }
-                else if (isUpdateTpsl) {
-                  const { triggerPrice, triggerAboveThreshold, entirePosition } = decoded.data;
-                  
-                  const tpslParams = {
-                    instructionName: 'instantUpdateTpsl',
-                    params: {
-                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                      takeProfitSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber(),
-                      stopLossSizePct: entirePosition ? 10000 : decoded.data.sizeUsdDelta.toNumber()
-                    }
-                  };
-                  
-                  console.log(`Extracted inner TP/SL data:`, tpslParams);
-                  return tpslParams;
-                }
-              } catch (error) {
-                console.error(`Error decoding inner instruction: ${error instanceof Error ? error.message : String(error)}`);
-                
-                // Fallback to basic parsing for inner instructions too
-                try {
-                  const instructionDataBuffer = data.slice(8);
-                  
-                  let offset = 16; // Skip collateralUsdDelta and sizeUsdDelta
-                  
-                  // Extract triggerPrice
-                  const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                  offset += 8;
-                  
-                  // Extract triggerAboveThreshold
-                  const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
-                  offset += 1;
-                  
-                  // Extract entirePosition
-                  const entirePosition = instructionDataBuffer[offset] === 1;
-                  
-                  // Map to our format
-                  const tpslParams = {
-                    instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
-                    params: {
-                      takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                      stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                      takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
-                      stopLossSizePct: entirePosition ? 10000 : 5000
-                    }
-                  };
-                  
-                  console.log(`Extracted inner TP/SL data (fallback):`, tpslParams);
-                  return tpslParams;
-                } catch (e) {
-                  console.error(`Inner instruction fallback parsing failed: ${e instanceof Error ? e.message : String(e)}`);
-                }
-              }
-            }
-          } catch (err) {
-            // Skip errors when trying to decode inner instructions
-          }
         }
       }
     }
@@ -1041,6 +847,8 @@ export function groupEventsIntoTrades(events: EventWithTx[]): { activeTrades: IT
     evt.event?.name === 'InstantIncreasePositionEvent' ||
     evt.event?.name === 'InstantDecreasePositionEvent' ||
     evt.event?.name === 'LiquidateFullPositionEvent' ||
+    evt.event?.name === 'IncreasePositionPreSwapEvent' ||
+    evt.event?.name === 'DecreasePositionPostSwapEvent' ||
     evt.event?.name === 'InstantCreateTpslEvent' || // Add TP/SL events
     evt.event?.name === 'InstantUpdateTpslEvent' || // Add TP/SL events
     evt.event?.name === 'FillLimitOrderEvent'  // Add FillLimitOrderEvent as a main event
@@ -1353,11 +1161,11 @@ function formatTpslInstructionData(data: any): string {
 }
 
 /**
- * Get the complete trade history for a specific position PDA
+ * Get the complete trade history for a specific position PDA with optional date filtering
  */
-export async function getPositionTradeHistory(): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
-  // Get all events for the position
-  const events = await getPositionEvents();
+export async function getPositionTradeHistory(targetDateString?: string): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
+  // Get all events for the position with date filtering
+  const events = await getPositionEvents(targetDateString);
   
   // Display raw events first
   console.log("\n======== RAW EVENTS ========");
@@ -1527,12 +1335,17 @@ function formatLimitOrderData(data: any): string {
 }
 
 /**
- * Example usage
+ * Example usage with date support
  */
-async function analyzeTradeHistory() {
-  const { activeTrades, completedTrades } = await getPositionTradeHistory();
+async function analyzeTradeHistory(targetDateString?: string) {
+  const { activeTrades, completedTrades } = await getPositionTradeHistory(targetDateString);
   
   console.log(`\n======== TRADE SUMMARY ========`);
+  if (targetDateString) {
+    console.log(`Date range: From now back to ${targetDateString}`);
+  } else {
+    console.log(`Date range: Last 30 days (default)`);
+  }
   console.log(`Active trades: ${activeTrades.length}`);
   console.log(`Completed trades: ${completedTrades.length}`);
   
@@ -2147,8 +1960,25 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
   }
 }
 
-// Run the example
-analyzeTradeHistory().then(() => {
+/**
+ * Jupiter Perpetuals Trade History Analyzer with Date Range Support
+ * 
+ * To analyze trades within a specific date range:
+ * 1. Update the TARGET_DATE variable below with your desired start date in DD.MM.YYYY format
+ * 2. Set TARGET_DATE to undefined to use default (30 days ago)
+ * 
+ * Examples:
+ * - "01.01.2025" - Fetch all transactions from now back to January 1st, 2025
+ * - "15.12.2024" - Fetch all transactions from now back to December 15th, 2024
+ * - undefined - Fetch transactions from the last 30 days (default)
+ */
+
+// ====== CONFIGURATION ======
+const TARGET_DATE = "13.04.2025"; // Change this date or set to undefined for default (30 days)
+// ============================
+
+// Run the example with date support
+analyzeTradeHistory(TARGET_DATE).then(() => {
   console.log("Trade analysis complete");
 }).catch(err => {
   console.error("Error analyzing trades:", err);
