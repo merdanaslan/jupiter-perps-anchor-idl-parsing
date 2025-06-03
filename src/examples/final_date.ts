@@ -325,37 +325,49 @@ export async function getPositionEvents(targetDateString?: string) {
                         const instructionDataBuffer = data.slice(8);
                         let offset = 0;
                         
-                        // Read collateralUsdDelta (u64/BN)
-                        const collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                        offset += 8;
+                        let collateralUsdDelta, sizeUsdDelta, triggerPrice, triggerAboveThreshold, entirePosition, counter, requestTime;
                         
-                        // Read sizeUsdDelta (u64/BN)
-                        const sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                        offset += 8;
-                        
-                        // Read triggerPrice (u64/BN)
-                        const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                        offset += 8;
-                        
-                        // Read triggerAboveThreshold (bool) - 1 byte
-                        const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
-                        offset += 1;
-                        
-                        // Read entirePosition (bool) - 1 byte
-                        const entirePosition = instructionDataBuffer[offset] === 1;
-                        offset += 1;
-                        
-                        // Read counter (u64/BN) if available
-                        let counter = new BN(0);
-                        if (offset + 8 <= instructionDataBuffer.length) {
+                        if (isCreateTpsl) {
+                          // InstantCreateTpsl structure (7 fields)
+                          collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                          
+                          sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                          
+                          triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                          
+                          triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+                          offset += 1;
+                          
+                          entirePosition = instructionDataBuffer[offset] === 1;
+                          offset += 1;
+                          
                           counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
                           offset += 8;
-                        }
-                        
-                        // Read requestTime (i64/BN) if available
-                        let requestTime = new BN(0);
-                        if (offset + 8 <= instructionDataBuffer.length) {
+                          
                           requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                        } else {
+                          // InstantUpdateTpsl structure (3 fields only)
+                          sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                          
+                          triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          offset += 8;
+                          
+                          requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          
+                          // For update events, these fields don't exist in the IDL
+                          // We need to determine triggerAboveThreshold from context/price analysis
+                          const triggerPriceUSD = parseFloat(BNToUSDRepresentation(triggerPrice, USDC_DECIMALS));
+                          
+                          // For long positions, if trigger price is reasonable (> $100 and < $200), 
+                          // it's likely a take profit. Otherwise it's probably a stop loss.
+                          triggerAboveThreshold = triggerPriceUSD > 100 && triggerPriceUSD < 200;
+                          entirePosition = false; // Default for update events 
+                          collateralUsdDelta = new BN(0);
+                          counter = new BN(0);
                         }
                         
                         // Create the TPSL data object - if triggerAboveThreshold is true, it's a Take Profit
@@ -578,37 +590,49 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
             const instructionDataBuffer = data.slice(8);
             let offset = 0;
             
-            // Read collateralUsdDelta (u64/BN)
-            const collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-            offset += 8;
+            let collateralUsdDelta, sizeUsdDelta, triggerPrice, triggerAboveThreshold, entirePosition, counter, requestTime;
             
-            // Read sizeUsdDelta (u64/BN)
-            const sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-            offset += 8;
-            
-            // Read triggerPrice (u64/BN)
-            const triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-            offset += 8;
-            
-            // Read triggerAboveThreshold (bool) - 1 byte
-            const triggerAboveThreshold = instructionDataBuffer[offset] === 1;
-            offset += 1;
-            
-            // Read entirePosition (bool) - 1 byte
-            const entirePosition = instructionDataBuffer[offset] === 1;
-            offset += 1;
-            
-            // Read counter (u64/BN) if available
-            let counter = new BN(0);
-            if (offset + 8 <= instructionDataBuffer.length) {
+            if (isCreateTpsl) {
+              // InstantCreateTpsl structure (7 fields)
+              collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
+              
+              sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
+              
+              triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
+              
+              triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+              offset += 1;
+              
+              entirePosition = instructionDataBuffer[offset] === 1;
+              offset += 1;
+              
               counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
               offset += 8;
-            }
-            
-            // Read requestTime (i64/BN) if available
-            let requestTime = new BN(0);
-            if (offset + 8 <= instructionDataBuffer.length) {
+              
               requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+            } else {
+              // InstantUpdateTpsl structure (3 fields only)
+              sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
+              
+              triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              offset += 8;
+              
+              requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+              
+              // For update events, these fields don't exist in the IDL
+              // We need to determine triggerAboveThreshold from context/price analysis
+              const triggerPriceUSD = parseFloat(BNToUSDRepresentation(triggerPrice, USDC_DECIMALS));
+              
+              // For long positions, if trigger price is reasonable (> $100 and < $200), 
+              // it's likely a take profit. Otherwise it's probably a stop loss.
+              triggerAboveThreshold = triggerPriceUSD > 100 && triggerPriceUSD < 200;
+              entirePosition = false; // Default for update events 
+              collateralUsdDelta = new BN(0);
+              counter = new BN(0);
             }
             
             return {
@@ -1188,14 +1212,19 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
         if (tpslInstructionData) {
           console.log("TP/SL Instruction Data:");
           console.log(`  Instruction: ${tpslInstructionData.instructionName}`);
-          console.log(`  Collateral USD Delta: ${eventData.tpslCollateralUsdDelta || '$0.00'}`);
+          
+          // Only show collateral delta for create events
+          if (tpslInstructionData.instructionName === 'instantCreateTpsl') {
+            console.log(`  Collateral USD Delta: ${eventData.tpslCollateralUsdDelta || '$0.00'}`);
+          }
+          
           console.log(`  Size USD Delta: ${eventData.tpslSizeUsdDelta || '$0.00'}`);
           console.log(`  Trigger Price: ${eventData.tpslTriggerPrice || 'N/A'}`);
           console.log(`  Trigger Above Threshold: ${eventData.tpslTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
           console.log(`  Entire Position: ${eventData.tpslEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
           
-          if (eventData.tpslCounter) console.log(`  Counter: ${eventData.tpslCounter}`);
-          if (eventData.tpslRequestTime) console.log(`  Request Time: ${eventData.tpslRequestTime}`);
+          if (eventData.tpslCounter && eventData.tpslCounter !== '0') console.log(`  Counter: ${eventData.tpslCounter}`);
+          if (eventData.tpslRequestTime && eventData.tpslRequestTime !== '1970-01-01T00:00:00.000Z') console.log(`  Request Time: ${eventData.tpslRequestTime}`);
           
           // Add the interpreted TP/SL values for clarity
           console.log(`  Order Type: ${eventData.tpslTriggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
@@ -1216,16 +1245,21 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               
               // Show all raw parameters
               console.log(`  Instruction: ${tpslData.instructionName}`);
-              console.log(`  Collateral USD Delta: $${BNToUSDRepresentation(tpslData.params.collateralUsdDelta, USDC_DECIMALS)}`);
+              
+              // Only show collateral delta for create events
+              if (tpslData.instructionName === 'instantCreateTpsl') {
+                console.log(`  Collateral USD Delta: $${BNToUSDRepresentation(tpslData.params.collateralUsdDelta, USDC_DECIMALS)}`);
+              }
+              
               console.log(`  Size USD Delta: $${BNToUSDRepresentation(tpslData.params.sizeUsdDelta, USDC_DECIMALS)}`);
               console.log(`  Trigger Price: $${BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS)}`);
               console.log(`  Trigger Above Threshold: ${tpslData.params.triggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
               console.log(`  Entire Position: ${tpslData.params.entirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
               
-              if (tpslData.params.counter) 
+              if (tpslData.params.counter && tpslData.params.counter.toString() !== '0') 
                 console.log(`  Counter: ${tpslData.params.counter.toString()}`);
               
-              if (tpslData.params.requestTime) {
+              if (tpslData.params.requestTime && tpslData.params.requestTime.toNumber() !== 0) {
                 const timestamp = new Date(tpslData.params.requestTime.toNumber() * 1000).toISOString();
                 console.log(`  Request Time: ${timestamp}`);
               }

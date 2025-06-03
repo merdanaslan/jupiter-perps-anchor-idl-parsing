@@ -1,0 +1,1834 @@
+Getting signatures from now until 13/04/2025...
+(node:48079) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Fetched 100 signatures (total: 100)
+Reached target date 13/04/2025, stopping fetch
+Found 50 transactions within date range
+Skipping failed transaction: 2ANDgudC6dB7r9D4ckKfgeMtVNxxs44H2Y1khZnPKVBNBVeFeQYpi1i1ZcwSs9FUEm3YBiYWu2VbxiauniP3kbJB
+Skipping failed transaction: 3KLL1yPxXLkfiJZrdf1NK9ZZXFeTB1JSEohMjyi29JcwRhCuwr7XCMiBL2G3wRJ5Kp9bmC4L2gKN1DQkz2yE8F2q
+Waiting 5 seconds before processing next transaction...
+Processing transaction 3/50: 44VBL7AwxvciiW4xqLKMiX25CKpBDcc5qemuSrMmCcmUAodePpQAoXiBhxFjMiueacu2HLXR9PysfceXzg42Xyh
+Found event: LiquidateFullPositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 4/50: Cu6sYDwXLiztQDfk2kpD9QZKCTWRQX2Vp5BDfDgXJu68E2dVKNzoeRU5mdPdCHBjxj8r182ete9UHtQeRgBktxs
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 5/50: 58ybUgscu52irv43c4j7CFu61MnqWwTq6dBSsm7oTF6GosNmzuWF7xsQWnn7Bd2uUTx9o1b6cVWP6dR4vMcmZ79y
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 6/50: 5ynga7Umfu9MghYNA4hWqWbK7i57zrfyF6LHhSPHEeyWBptBp8WPU6owB8boDWnBtZNbe4QU9muAAMeSrdjbv4oF
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 7/50: 2pCGJoUEAJAvhyWWCrkuwPTtCkJZJPifFbQf4fpdtEdt4L5jVFam5Ngua5JHgJyeuBmyuUaqjQFhL92imtQQGtqE
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 8/50: c9AKkmswGzVhQCReotaiRn6vHZodNbdbdyiQagmDao3zQpEQdSG1BLtAZ9Yek4d2GU1MEpAqMoQxnTv11b5maJd
+Found event: InstantIncreasePositionEvent
+Skipping failed transaction: 3KpqCp4U2k84rbGY1CFowbZV3Lh1PPU6iHe5K793Mxfs32oBaFttFM1dYU687M3GnaQFc5h4jsvrCfyLM1c1TJHS
+Skipping failed transaction: 4yhTd2X8zjunYxwHsKTyYnkk4QvSTxvGYo62bssR2F33Tfys9Y3rKNb1xgumBcxN1kvcnwzFTnyGYkbnybEVHtJf
+Waiting 5 seconds before processing next transaction...
+Processing transaction 11/50: 5RGx3DY2nF2RfhMjeqPYUskJ7p6nxrnPLs24T8HC8dp6b7dWRZXR8qDnfYerCzdSayDGXP2fiAZC5zdVYtsBjznZ
+Found event: PoolSwapEvent
+Found event: DecreasePositionEvent
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 12/50: 4PbH8Zz7Uz9H2MfHoDf1pxtkTjxveLRxd7xAprJNpaTMRQVr7DY5m2WJD33XPERmVu3tarN1wTaxB4WTn8EkKXua
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 13/50: Pfm8mhYuCE5ddFgtUGBHuW58DjxoyHjxFjxEp4QnqUN4BzagVD7VzkAJZzvmywxEqwhJLQxnf6GAfzM6eJuCJwB
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 14/50: 37cLepWJ6whso5X9i3uv2EFHSXH9hszJUgBo2qqMpEkqY7YY86uzq5mzY73KhE82RFFLNH9NHjXV7NPPYZUyHmZy
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 15/50: 58nKqkquCPEzUZoF4epSGRSULHQMPguxAKU2G4fPVAfudDm3DTKHEYQivpz1oqbx1EnCBkWaSM4CpknSc2B27iwC
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 16/50: 3jEg2gPDEcCQRv721D5VMZquP7dKiuMhYq2tpqBLXAQCmQC8igE3i2pmKpBvpLi1ybt1GmYxvrBADAEhWDmhzZvd
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 17/50: 3km4141t8ijziMcfyDAEbd3PeYZq4TSVxTbCr3yLy9jzt81fRK3na9kgEsUs4PUmGkJ2Vb5gWbs9AmCddwvU46Lx
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 18/50: Zh3NjGuNM5Xt2PAyX6S6XCEt5sBY6oBP7DTLEmPxuoF8s3sHprgknxf2nDjwuYryH1vK8tMffQ1y6viKf3Vv3TR
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 19/50: 5AaHJ8zgE87428wdmrYdtnKo4TvQhxj61YekBQQddHdrVv9kP6axuRFp5pEwv23UvLWynZZoG7xFocuArKnSXLE8
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 20/50: 48JJPPP1uNQosAuZgrf8mdZ6iCij7KTXsPoi3EcNpMateKMoCG77RrdcKDcwTHWWpd31DfAqsMmBi642iCjhMHah
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 21/50: 4n6Cvpxq1Ro2qz5JAZ7aDc5tzQ6P51Fhe59ufNFp8t3KqrDa4o2xEkiHprwsEHuTqm6om4rAEfqPngLNKDENcaR6
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 22/50: q9Y95hBqCSmiDoz9GKEoWoGcgoeznA9pWxx4N7JJ6cXSTYwaeqsn3D46ELzWT9xde9KVctZ6Egwd49bujTw5CWc
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 23/50: 5mej2UwKz1pF5G8Fxx3fR9jgLUqbzR1nL8BhHTbLsrkvw6qtvrEZvR4dp3BQJYGkey97ozdZgyvEhtYdiC5jsZdx
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 24/50: 4DJdSx63wtCnU5RsCpfUcCLBVUnPu6yrrVpo1UWyU1aWCoxCbbNGgxwJtcxpr97iq39fLhc6VwH4jACz6yr4jrdN
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 25/50: t8P9eCyV4KXEuCw3zzDR6A28VuR8NDd8qH2WC9XorGNWdHuu3RpQaBicaqyqx2Hdsz6vco33AoRKKrhWgkei3kh
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 26/50: 52EuorQFaU8FV16DCnkbBtPP67tNfgxAo3S2v1WXTkwD3zgCQPjMZvymhiesCGVaAc2PynkejFtQCL1FUGhmbu2t
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 27/50: 2bGxHanpcmxnfjgTqYTTFkFD87cqFJLBH93bhFi1q6QJkXhm8ykctHfXG1QYUNa9XP9h14i8tQobux3q4U3HABHW
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 28/50: 3PSoHbCVEaH2uASgmKEFa9DLFvz3ZXVvHGB8Y56uRtpGzgDqZ79ijDEadWJH8QCus9xjBpdtY7qxbobSBmNqSvt1
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 29/50: 28Ph4FqDutBvma6tagpmhmirPvjzBsxR5sp7Pip5MrZxHKsVFXVdT8rAXQcxW6NHssPF8xpnY23jV2ETHkvrZdEF
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 1/5 after 870ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 2/5 after 1982ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Found event: InstantIncreasePositionEvent
+Skipping failed transaction: XsbjCTCHZp5z1jyqYQrYzZTiyNFeox2FrSYgGnkLPsqHqCeX1ZDz4v7ATQiJZcUFox22LTdjXCXSpv9SZJ9Vxrr
+Skipping failed transaction: 3zjGwdZeDK5NZvkVU4fUZuFkmuo5WrSsDxacNzc2LBjHj27vngpF5zBVs2Vuq3MGYFa8KWkzTZogBVx5okgV7Wzt
+Skipping failed transaction: 65CZUiRT3yQ9MpJk3ekAYU8FFvtUr1b6KzKuAdNN1WjTHJ5njBK3tPNdrusQDta6Zrscv5iXzG4qBsEoQry3Mven
+Skipping failed transaction: 2rkQxHJVH4n3RnJbJ5mrMCSv9neakDsULrmTYwk56oWNSgQ4UnUSFXE2yhtsSSutQaPnhxWfEKUppjauxsnyZEoc
+Skipping failed transaction: 3nRN1d2W2PuUochVf8R8UR84espuQ5iChfWkufrQ6BYSS7VzWcbqpk6NwpsP61hSPKcPCXUMv8qEHZiuiHpESFVR
+Waiting 5 seconds before processing next transaction...
+Processing transaction 35/50: 2AG5FCGk37k1WZqV5zoGwTMbKvK6JxAvGPckyF6bi2557pfXyd6EAGgAtmpwFWfn7w7SP1ZQZu8fLcr8oRmAfnCs
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 1/5 after 931ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 2/5 after 2001ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 3/5 after 3747ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 4/5 after 7074ms delay...
+Found event: PoolSwapEvent
+Found event: DecreasePositionEvent
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 36/50: rntYyV1aSN7Ja23MQgcdGGSeJSvBtpSzoJ4h1iNm3VbDBv2zH3dUWbEYcJ5Bda6dzJWNx4PMN8LUr3dhFzfzFH8
+Found event: InstantUpdateTpslEvent
+Found instantUpdateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 37/50: b1U7kvMLGCGZTXWM6uEmQ2QxdBCpjRsujVezJ7BPXaLh4HwBXUikTZ9nX5TPfoStoCjeNjz8LT5qaiXByfvKH9M
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 38/50: 5tsT9ye2ZAikZCaL5FZPf4N1hTceUxUpjW62XkUKFkc1MJnPwJQ41n9JcFVCPJ7KEogkriXWXDmQoTsexCuQGgX
+Found event: InstantIncreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 39/50: 2QAfFki7HE5xzhn8Sjy15HUHuSGFdRt3Cwd5HGTrxAiAfT3Zybpo9mkPt4Xh99DrTNYxXGxUJAajB8gZdidA1oZ2
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 40/50: zpvwXCjM3rMnr5LVwCFZmJN4QL3ktRL5YTXkMdjB3V9pMeYrykMeG8vvtZPzPTN7bACmfELUJqaDr4RBffKBj6N
+Found event: InstantDecreasePositionEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 41/50: 2J4fAiefF6Tp2HJ22xDtEWVaLNiaGdJiQxW7zzpgK5mrUgc8Hb1nGMABtBhfjwtnpxiYsRhJ5aBoVy5y3Pw1xt9r
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 42/50: 5A5qzgNJbRZmiRYKppbqxMS6LrPJvPD3D7iYte9nk4e8ZbpBw3RVSqUBLpyk1zSodPGzFEw7Vjzhhkx9SUbF66hW
+Found event: InstantIncreasePositionEvent
+Skipping failed transaction: 5QLkZP1Ge9ZBMwyNB73ocn81io8fhQW2DwubB2SyYTUDb5jXc6pJRmGrnbhz6oRvmepda2yH5Rtw2H8LXeq1VQUL
+Skipping failed transaction: 5J7vDgo7NGFRrDLKjkopcUqW3Y78wme7APwKugKVB7ZCWALTwicTbPiHeptQvyDooUXRSQ3LkvoxnRHhv3yqMCdq
+Skipping failed transaction: 3tNahYnm8AY8gXRT13gdFW8Y3iz6hZ3hbPf85PqLVyT4XvrjmpaJKchGb1W9LUMcgJkKp8zZAeGVozUfis9WhDnK
+Waiting 5 seconds before processing next transaction...
+Processing transaction 46/50: 3FTB79JLX4WoM2MrisDzHrGBfyuPPxAnMwSLbrZdxrc8N6kcxWJsWVVnuS5NCwqurRv1xzhj3BPbsHDKDJySfFwE
+Found event: PoolSwapEvent
+Found event: DecreasePositionEvent
+Found event: ClosePositionRequestEvent
+Waiting 5 seconds before processing next transaction...
+Processing transaction 47/50: tRgdduJdTjGn6mK531ivq4kxYQsyMaiC23uM5sKuG4abdpLQqBhkAT1wMt2vu966EvPE3858NmbXbj2iRqKU6x9
+Found event: InstantUpdateTpslEvent
+Found instantUpdateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 48/50: sxtYZp6pgd1qgfBdJaKRvzWxorNjVzwFUu1SZ8Enh8TvDTj6MRYFygA7LQ2KNGPX7HdRWm5oZPKvfWkDYYRLrek
+Found event: InstantUpdateTpslEvent
+Found instantUpdateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 49/50: 22KcTKnJ3qGthjZEWxP9T9SeF7J4U6E59QPb6TsdW8L9YvhL3odQ6b7sYVd28vU9eM9LpWX73EFAegLPBYn9SzSS
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Found event: InstantCreateTpslEvent
+Found instantCreateTpsl instruction
+Waiting 5 seconds before processing next transaction...
+Processing transaction 50/50: 2qNHh9rxvcyfqAgNhSb6Qn4st5b3qKKPp5gMQTBSfiWr37CdqtCsUaVffm9rPta8rXYH7rYkGktiXs18nDeDAjwS
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 1/5 after 893ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 2/5 after 1991ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 3/5 after 4550ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 500ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 1000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 2000ms delay...
+Server responded with 429 Too Many Requests.  Retrying after 4000ms delay...
+Rate limited. Retry 4/5 after 9709ms delay...
+Found event: InstantIncreasePositionEvent
+Found 213 total events
+Found 32 relevant position events
+
+======== RAW EVENTS ========
+
+Event 1:
+Type: LiquidateFullPositionEvent
+Transaction: 44VBL7AwxvciiW4xqLKMiX25CKpBDcc5qemuSrMmCcmUAodePpQAoXiBhxFjMiueacu2HLXR9PysfceXzg42Xyh
+Time: 2025-04-27T01:32:06.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralMint: 'So11111111111111111111111111111111111111112',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionSizeUsd: '$26478.24',
+  hasProfit: false,
+  pnlDelta: '$197.92',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  transferAmountUsd: '$0.00',
+  transferToken: '0',
+  price: '$147.94',
+  feeUsd: '$19.87',
+  liquidationFeeUsd: '$48.35',
+  openTime: '2025-04-27T01:32:06.000Z'
+}
+
+Event 2:
+Type: InstantIncreasePositionEvent
+Transaction: Cu6sYDwXLiztQDfk2kpD9QZKCTWRQX2Vp5BDfDgXJu68E2dVKNzoeRU5mdPdCHBjxj8r182ete9UHtQeRgBktxs
+Time: 2025-04-26T23:38:17.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$26478.24',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$26478.24',
+  collateralUsdDelta: '$284.68',
+  collateralTokenDelta: '1909831065',
+  price: '$149.06',
+  priceSlippage: '$152.05',
+  feeToken: '124340821',
+  feeUsd: '$18.53',
+  openTime: '2025-04-26T23:38:17.000Z',
+  referral: null
+}
+
+Event 3:
+Type: InstantDecreasePositionEvent
+Transaction: 5ynga7Umfu9MghYNA4hWqWbK7i57zrfyF6LHhSPHEeyWBptBp8WPU6owB8boDWnBtZNbe4QU9muAAMeSrdjbv4oF
+Time: 2025-04-14T05:37:29.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: false,
+  pnlDelta: '$1082.76',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$176617.91',
+  transferAmountUsd: '$580.28',
+  transferToken: '4364166870',
+  price: '$132.96',
+  priceSlippage: '$130.22',
+  feeUsd: '$109.85',
+  openTime: '2025-04-14T05:37:29.000Z',
+  referral: null
+}
+
+Event 4:
+Type: InstantCreateTpslEvent
+Transaction: 2pCGJoUEAJAvhyWWCrkuwPTtCkJZJPifFbQf4fpdtEdt4L5jVFam5Ngua5JHgJyeuBmyuUaqjQFhL92imtQQGtqE
+Time: 2025-04-14T04:51:09.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '2z18Hsq1sjfnQhmqB5UyFDyzFYrpw9kxz22foPgsquHp',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-14T04:51:09.000Z',
+  takeProfitPrice: '$134.52',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$134.52',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '827488947',
+  tpslRequestTime: '2025-04-14T04:51:02.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $134.52
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 827488947
+  Request Time: 2025-04-14T04:51:02.000Z
+  Order Type: Take Profit
+  Take Profit Price: $134.52
+  Take Profit Size: 100%
+
+Event 5:
+Type: InstantIncreasePositionEvent
+Transaction: c9AKkmswGzVhQCReotaiRn6vHZodNbdbdyiQagmDao3zQpEQdSG1BLtAZ9Yek4d2GU1MEpAqMoQxnTv11b5maJd
+Time: 2025-04-14T04:39:49.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$176617.91',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$176617.91',
+  collateralUsdDelta: '$1878.86',
+  collateralTokenDelta: '14043930497',
+  price: '$133.78',
+  priceSlippage: '$136.46',
+  feeToken: '792096361',
+  feeUsd: '$105.97',
+  openTime: '2025-04-14T04:39:49.000Z',
+  referral: null
+}
+
+Event 6:
+Type: DecreasePositionEvent
+Transaction: 5RGx3DY2nF2RfhMjeqPYUskJ7p6nxrnPLs24T8HC8dp6b7dWRZXR8qDnfYerCzdSayDGXP2fiAZC5zdVYtsBjznZ
+Time: 2025-04-14T04:30:31.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionRequestKey: 'AaE8SVdpT8nrwPY9vq9zLGVUahE3r48RBtLKGc1GTxne',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  positionRequestChange: 2,
+  positionRequestType: 1,
+  hasProfit: true,
+  pnlDelta: '$463.81',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$150310.39',
+  transferAmountUsd: '$1882.95',
+  transferToken: '1880322466',
+  price: '$133.29',
+  priceSlippage: null,
+  feeUsd: '$90.38',
+  openTime: '2025-04-14T04:30:31.000Z',
+  referral: null
+}
+
+Event 7:
+Type: InstantCreateTpslEvent
+Transaction: 4PbH8Zz7Uz9H2MfHoDf1pxtkTjxveLRxd7xAprJNpaTMRQVr7DY5m2WJD33XPERmVu3tarN1wTaxB4WTn8EkKXua
+Time: 2025-04-14T04:27:37.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: 'AaE8SVdpT8nrwPY9vq9zLGVUahE3r48RBtLKGc1GTxne',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-14T04:27:37.000Z',
+  takeProfitPrice: '$133.29',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$133.29',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '234287483',
+  tpslRequestTime: '2025-04-14T04:27:30.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $133.29
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 234287483
+  Request Time: 2025-04-14T04:27:30.000Z
+  Order Type: Take Profit
+  Take Profit Price: $133.29
+  Take Profit Size: 100%
+
+Event 8:
+Type: InstantIncreasePositionEvent
+Transaction: Pfm8mhYuCE5ddFgtUGBHuW58DjxoyHjxFjxEp4QnqUN4BzagVD7VzkAJZzvmywxEqwhJLQxnf6GAfzM6eJuCJwB
+Time: 2025-04-14T04:27:07.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$150310.39',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$150310.39',
+  collateralUsdDelta: '$1599.70',
+  collateralTokenDelta: '12038748753',
+  price: '$132.87',
+  priceSlippage: '$135.48',
+  feeToken: '678704564',
+  feeUsd: '$90.18',
+  openTime: '2025-04-14T04:27:07.000Z',
+  referral: null
+}
+
+Event 9:
+Type: InstantDecreasePositionEvent
+Transaction: 58nKqkquCPEzUZoF4epSGRSULHQMPguxAKU2G4fPVAfudDm3DTKHEYQivpz1oqbx1EnCBkWaSM4CpknSc2B27iwC
+Time: 2025-04-14T04:26:55.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: true,
+  pnlDelta: '$479.33',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$118719.85',
+  transferAmountUsd: '$1599.25',
+  transferToken: '12043922430',
+  price: '$132.78',
+  priceSlippage: '$130.16',
+  feeUsd: '$72.04',
+  openTime: '2025-04-14T04:26:55.000Z',
+  referral: null
+}
+
+Event 10:
+Type: InstantCreateTpslEvent
+Transaction: 3jEg2gPDEcCQRv721D5VMZquP7dKiuMhYq2tpqBLXAQCmQC8igE3i2pmKpBvpLi1ybt1GmYxvrBADAEhWDmhzZvd
+Time: 2025-04-14T04:23:12.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '2nR4dMcRqHVKd2KUacEkvJHGRKVbxX971615tUQyTp9L',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-14T04:23:12.000Z',
+  takeProfitPrice: '$133.20',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$133.20',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '33575330',
+  tpslRequestTime: '2025-04-14T04:23:05.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $133.20
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 33575330
+  Request Time: 2025-04-14T04:23:05.000Z
+  Order Type: Take Profit
+  Take Profit Price: $133.20
+  Take Profit Size: 100%
+
+Event 11:
+Type: InstantIncreasePositionEvent
+Transaction: 3km4141t8ijziMcfyDAEbd3PeYZq4TSVxTbCr3yLy9jzt81fRK3na9kgEsUs4PUmGkJ2Vb5gWbs9AmCddwvU46Lx
+Time: 2025-04-14T04:09:06.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$118719.85',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$118719.85',
+  collateralUsdDelta: '$1263.19',
+  collateralTokenDelta: '9551500372',
+  price: '$132.25',
+  priceSlippage: '$134.87',
+  feeToken: '538611386',
+  feeUsd: '$71.23',
+  openTime: '2025-04-14T04:09:06.000Z',
+  referral: null
+}
+
+Event 12:
+Type: InstantDecreasePositionEvent
+Transaction: 5AaHJ8zgE87428wdmrYdtnKo4TvQhxj61YekBQQddHdrVv9kP6axuRFp5pEwv23UvLWynZZoG7xFocuArKnSXLE8
+Time: 2025-04-14T02:05:52.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: false,
+  pnlDelta: '$760.86',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$640337.87',
+  transferAmountUsd: '$6942.37',
+  transferToken: '53294244091',
+  price: '$130.26',
+  priceSlippage: '$127.58',
+  feeUsd: '$389.85',
+  openTime: '2025-04-14T02:05:52.000Z',
+  referral: null
+}
+
+Event 13:
+Type: InstantCreateTpslEvent
+Transaction: 48JJPPP1uNQosAuZgrf8mdZ6iCij7KTXsPoi3EcNpMateKMoCG77RrdcKDcwTHWWpd31DfAqsMmBi642iCjhMHah
+Time: 2025-04-14T01:45:02.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '2sb5mbW7jZKZna7SFmkw2xLhLivRJyb2iEKoZsXciJsp',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-14T01:45:02.000Z',
+  takeProfitPrice: '$131.42',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$131.42',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '440444122',
+  tpslRequestTime: '2025-04-14T01:44:55.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $131.42
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 440444122
+  Request Time: 2025-04-14T01:44:55.000Z
+  Order Type: Take Profit
+  Take Profit Price: $131.42
+  Take Profit Size: 100%
+
+Event 14:
+Type: InstantIncreasePositionEvent
+Transaction: 4n6Cvpxq1Ro2qz5JAZ7aDc5tzQ6P51Fhe59ufNFp8t3KqrDa4o2xEkiHprwsEHuTqm6om4rAEfqPngLNKDENcaR6
+Time: 2025-04-14T01:43:02.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$640337.87',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$640337.87',
+  collateralUsdDelta: '$8477.29',
+  collateralTokenDelta: '65000000000',
+  price: '$130.41',
+  priceSlippage: '$133.04',
+  feeToken: '2945888851',
+  feeUsd: '$384.20',
+  openTime: '2025-04-14T01:43:02.000Z',
+  referral: null
+}
+
+Event 15:
+Type: InstantDecreasePositionEvent
+Transaction: 5mej2UwKz1pF5G8Fxx3fR9jgLUqbzR1nL8BhHTbLsrkvw6qtvrEZvR4dp3BQJYGkey97ozdZgyvEhtYdiC5jsZdx
+Time: 2025-04-14T01:32:32.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: true,
+  pnlDelta: '$584.11',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$395210.18',
+  transferAmountUsd: '$6922.93',
+  transferToken: '52709793634',
+  price: '$131.34',
+  priceSlippage: '$128.76',
+  feeUsd: '$243.68',
+  openTime: '2025-04-14T01:32:32.000Z',
+  referral: null
+}
+
+Event 16:
+Type: InstantCreateTpslEvent
+Transaction: 4DJdSx63wtCnU5RsCpfUcCLBVUnPu6yrrVpo1UWyU1aWCoxCbbNGgxwJtcxpr97iq39fLhc6VwH4jACz6yr4jrdN
+Time: 2025-04-14T00:52:03.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '2yZozuZFdmmDSBk2qWhrLuAMRtZUzcHqtkkvaTdHeEh9',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-14T00:52:03.000Z',
+  takeProfitPrice: '$131.94',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$131.94',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '15327899',
+  tpslRequestTime: '2025-04-14T00:51:57.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $131.94
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 15327899
+  Request Time: 2025-04-14T00:51:57.000Z
+  Order Type: Take Profit
+  Take Profit Price: $131.94
+  Take Profit Size: 100%
+
+Event 17:
+Type: InstantIncreasePositionEvent
+Transaction: t8P9eCyV4KXEuCw3zzDR6A28VuR8NDd8qH2WC9XorGNWdHuu3RpQaBicaqyqx2Hdsz6vco33AoRKKrhWgkei3kh
+Time: 2025-04-14T00:49:33.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$395210.18',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$395210.18',
+  collateralUsdDelta: '$6819.62',
+  collateralTokenDelta: '52000000000',
+  price: '$131.14',
+  priceSlippage: '$133.81',
+  feeToken: '1808098565',
+  feeUsd: '$237.12',
+  openTime: '2025-04-14T00:49:33.000Z',
+  referral: null
+}
+
+Event 18:
+Type: InstantDecreasePositionEvent
+Transaction: 2bGxHanpcmxnfjgTqYTTFkFD87cqFJLBH93bhFi1q6QJkXhm8ykctHfXG1QYUNa9XP9h14i8tQobux3q4U3HABHW
+Time: 2025-04-13T14:45:02.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: false,
+  pnlDelta: '$6398.87',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1607913.34',
+  transferAmountUsd: '$31100.06',
+  transferToken: '242067867462',
+  price: '$128.47',
+  priceSlippage: '$125.89',
+  feeUsd: '$3028.93',
+  openTime: '2025-04-13T14:45:02.000Z',
+  referral: null
+}
+
+Event 19:
+Type: InstantCreateTpslEvent
+Transaction: 3PSoHbCVEaH2uASgmKEFa9DLFvz3ZXVvHGB8Y56uRtpGzgDqZ79ijDEadWJH8QCus9xjBpdtY7qxbobSBmNqSvt1
+Time: 2025-04-13T14:41:48.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '5MoDjzvH8VWzzCD3WszDdu4eSfhdfXbe5tq3NPNWWjbS',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-13T14:41:48.000Z',
+  takeProfitPrice: '$130.06',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$130.06',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '988626168',
+  tpslRequestTime: '2025-04-13T14:41:41.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $130.06
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 988626168
+  Request Time: 2025-04-13T14:41:41.000Z
+  Order Type: Take Profit
+  Take Profit Price: $130.06
+  Take Profit Size: 100%
+
+Event 20:
+Type: InstantIncreasePositionEvent
+Transaction: 28Ph4FqDutBvma6tagpmhmirPvjzBsxR5sp7Pip5MrZxHKsVFXVdT8rAXQcxW6NHssPF8xpnY23jV2ETHkvrZdEF
+Time: 2025-04-13T14:41:27.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$1607913.34',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1607913.34',
+  collateralUsdDelta: '$41492.61',
+  collateralTokenDelta: '321673192419',
+  price: '$128.98',
+  priceSlippage: '$131.63',
+  feeToken: '7479248400',
+  feeUsd: '$964.74',
+  openTime: '2025-04-13T14:41:27.000Z',
+  referral: null
+}
+
+Event 21:
+Type: DecreasePositionEvent
+Transaction: 2AG5FCGk37k1WZqV5zoGwTMbKvK6JxAvGPckyF6bi2557pfXyd6EAGgAtmpwFWfn7w7SP1ZQZu8fLcr8oRmAfnCs
+Time: 2025-04-13T14:41:08.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionRequestKey: '4LqenDsoHzUC9JRjnbiqwrTAqYv2W2SHkpDfavxWRjC4',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  positionRequestChange: 2,
+  positionRequestType: 1,
+  hasProfit: true,
+  pnlDelta: '$7582.55',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1378121.41',
+  transferAmountUsd: '$41559.09',
+  transferToken: '41496758167',
+  price: '$129.02',
+  priceSlippage: null,
+  feeUsd: '$831.68',
+  openTime: '2025-04-13T14:41:08.000Z',
+  referral: null
+}
+
+Event 22:
+Type: InstantUpdateTpslEvent
+Transaction: rntYyV1aSN7Ja23MQgcdGGSeJSvBtpSzoJ4h1iNm3VbDBv2zH3dUWbEYcJ5Bda6dzJWNx4PMN8LUr3dhFzfzFH8
+Time: 2025-04-13T14:40:52.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '4LqenDsoHzUC9JRjnbiqwrTAqYv2W2SHkpDfavxWRjC4',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  updateTime: '2025-04-13T14:40:52.000Z',
+  takeProfitPrice: '$129.02',
+  takeProfitSizePercent: 5000,
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$129.02',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: false,
+  tpslCounter: '0',
+  tpslRequestTime: '2025-04-13T14:40:45.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantUpdateTpsl
+  Size USD Delta: $0.00
+  Trigger Price: $129.02
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: No (Partial)
+  Request Time: 2025-04-13T14:40:45.000Z
+  Order Type: Take Profit
+  Take Profit Price: $129.02
+  Take Profit Size: 50%
+
+Event 23:
+Type: InstantCreateTpslEvent
+Transaction: b1U7kvMLGCGZTXWM6uEmQ2QxdBCpjRsujVezJ7BPXaLh4HwBXUikTZ9nX5TPfoStoCjeNjz8LT5qaiXByfvKH9M
+Time: 2025-04-13T14:32:49.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: '4LqenDsoHzUC9JRjnbiqwrTAqYv2W2SHkpDfavxWRjC4',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-13T14:32:49.000Z',
+  takeProfitPrice: '$129.66',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$129.66',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '643120978',
+  tpslRequestTime: '2025-04-13T14:32:44.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $129.66
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 643120978
+  Request Time: 2025-04-13T14:32:44.000Z
+  Order Type: Take Profit
+  Take Profit Price: $129.66
+  Take Profit Size: 100%
+
+Event 24:
+Type: InstantIncreasePositionEvent
+Transaction: 5tsT9ye2ZAikZCaL5FZPf4N1hTceUxUpjW62XkUKFkc1MJnPwJQ41n9JcFVCPJ7KEogkriXWXDmQoTsexCuQGgX
+Time: 2025-04-13T14:31:58.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$1378121.41',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1378121.41',
+  collateralUsdDelta: '$37564.46',
+  collateralTokenDelta: '292754213053',
+  price: '$128.31',
+  priceSlippage: '$130.86',
+  feeToken: '21480452077',
+  feeUsd: '$2756.24',
+  openTime: '2025-04-13T14:31:58.000Z',
+  referral: null
+}
+
+Event 25:
+Type: InstantDecreasePositionEvent
+Transaction: zpvwXCjM3rMnr5LVwCFZmJN4QL3ktRL5YTXkMdjB3V9pMeYrykMeG8vvtZPzPTN7bACmfELUJqaDr4RBffKBj6N
+Time: 2025-04-13T11:15:24.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  desiredMint: 'So11111111111111111111111111111111111111112',
+  hasProfit: false,
+  pnlDelta: '$521.17',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$2256458.07',
+  transferAmountUsd: '$27713.45',
+  transferToken: '213180456395',
+  price: '$129.99',
+  priceSlippage: '$127.38',
+  feeUsd: '$3292.59',
+  openTime: '2025-04-13T11:15:24.000Z',
+  referral: null
+}
+
+Event 26:
+Type: InstantCreateTpslEvent
+Transaction: 2J4fAiefF6Tp2HJ22xDtEWVaLNiaGdJiQxW7zzpgK5mrUgc8Hb1nGMABtBhfjwtnpxiYsRhJ5aBoVy5y3Pw1xt9r
+Time: 2025-04-13T09:30:22.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: 'AgyshjmNqaTah6cGjtzYV9zXcLFvvg5tHJKVYtBe3Lns',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-13T09:30:22.000Z',
+  takeProfitPrice: '$132.98',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$132.98',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '674961023',
+  tpslRequestTime: '2025-04-13T09:30:15.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $132.98
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 674961023
+  Request Time: 2025-04-13T09:30:15.000Z
+  Order Type: Take Profit
+  Take Profit Price: $132.98
+  Take Profit Size: 100%
+
+Event 27:
+Type: InstantIncreasePositionEvent
+Transaction: 5A5qzgNJbRZmiRYKppbqxMS6LrPJvPD3D7iYte9nk4e8ZbpBw3RVSqUBLpyk1zSodPGzFEw7Vjzhhkx9SUbF66hW
+Time: 2025-04-13T09:00:34.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$2256458.07',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$2256458.07',
+  collateralUsdDelta: '$34587.98',
+  collateralTokenDelta: '266000000000',
+  price: '$130.03',
+  priceSlippage: '$132.58',
+  feeToken: '23538899377',
+  feeUsd: '$3060.76',
+  openTime: '2025-04-13T09:00:34.000Z',
+  referral: null
+}
+
+Event 28:
+Type: DecreasePositionEvent
+Transaction: 3FTB79JLX4WoM2MrisDzHrGBfyuPPxAnMwSLbrZdxrc8N6kcxWJsWVVnuS5NCwqurRv1xzhj3BPbsHDKDJySfFwE
+Time: 2025-04-13T08:57:13.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$0.00',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionRequestKey: 'G9idYC7QxJJ21k4Nj4qfUmgax5CbUZy4AW3GQeWAeDCe',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  positionRequestChange: 2,
+  positionRequestType: 1,
+  hasProfit: true,
+  pnlDelta: '$12494.06',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1659334.67',
+  transferAmountUsd: '$34572.09',
+  transferToken: '34516486510',
+  price: '$129.80',
+  priceSlippage: null,
+  feeUsd: '$1017.57',
+  openTime: '2025-04-13T08:57:13.000Z',
+  referral: null
+}
+
+Event 29:
+Type: InstantUpdateTpslEvent
+Transaction: tRgdduJdTjGn6mK531ivq4kxYQsyMaiC23uM5sKuG4abdpLQqBhkAT1wMt2vu966EvPE3858NmbXbj2iRqKU6x9
+Time: 2025-04-13T08:56:38.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: 'G9idYC7QxJJ21k4Nj4qfUmgax5CbUZy4AW3GQeWAeDCe',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  updateTime: '2025-04-13T08:56:38.000Z',
+  takeProfitPrice: '$129.80',
+  takeProfitSizePercent: 5000,
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$129.80',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: false,
+  tpslCounter: '0',
+  tpslRequestTime: '2025-04-13T08:56:33.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantUpdateTpsl
+  Size USD Delta: $0.00
+  Trigger Price: $129.80
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: No (Partial)
+  Request Time: 2025-04-13T08:56:33.000Z
+  Order Type: Take Profit
+  Take Profit Price: $129.80
+  Take Profit Size: 50%
+
+Event 30:
+Type: InstantUpdateTpslEvent
+Transaction: sxtYZp6pgd1qgfBdJaKRvzWxorNjVzwFUu1SZ8Enh8TvDTj6MRYFygA7LQ2KNGPX7HdRWm5oZPKvfWkDYYRLrek
+Time: 2025-04-13T08:41:00.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: 'G9idYC7QxJJ21k4Nj4qfUmgax5CbUZy4AW3GQeWAeDCe',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  updateTime: '2025-04-13T08:41:00.000Z',
+  takeProfitPrice: '$131.00',
+  takeProfitSizePercent: 5000,
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$131.00',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: false,
+  tpslCounter: '0',
+  tpslRequestTime: '2025-04-13T08:40:53.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantUpdateTpsl
+  Size USD Delta: $0.00
+  Trigger Price: $131.00
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: No (Partial)
+  Request Time: 2025-04-13T08:40:53.000Z
+  Order Type: Take Profit
+  Take Profit Price: $131.00
+  Take Profit Size: 50%
+
+Event 31:
+Type: InstantCreateTpslEvent
+Transaction: 22KcTKnJ3qGthjZEWxP9T9SeF7J4U6E59QPb6TsdW8L9YvhL3odQ6b7sYVd28vU9eM9LpWX73EFAegLPBYn9SzSS
+Time: 2025-04-13T08:24:41.000Z
+Event Data: {
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionRequestKey: 'G9idYC7QxJJ21k4Nj4qfUmgax5CbUZy4AW3GQeWAeDCe',
+  positionRequestMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  sizeUsdDelta: '$0.00',
+  collateralDelta: '0',
+  entirePosition: true,
+  openTime: '2025-04-13T08:24:41.000Z',
+  takeProfitPrice: '$130.15',
+  takeProfitSizePercent: 10000,
+  tpslCollateralUsdDelta: '$0.00',
+  tpslSizeUsdDelta: '$0.00',
+  tpslTriggerPrice: '$130.15',
+  tpslTriggerAboveThreshold: true,
+  tpslEntirePosition: true,
+  tpslCounter: '963503245',
+  tpslRequestTime: '2025-04-13T08:24:35.000Z'
+}
+TP/SL Instruction Data:
+  Instruction: instantCreateTpsl
+  Collateral USD Delta: $0.00
+  Size USD Delta: $0.00
+  Trigger Price: $130.15
+  Trigger Above Threshold: Yes (Take Profit)
+  Entire Position: Yes (100%)
+  Counter: 963503245
+  Request Time: 2025-04-13T08:24:35.000Z
+  Order Type: Take Profit
+  Take Profit Price: $130.15
+  Take Profit Size: 100%
+
+Event 32:
+Type: InstantIncreasePositionEvent
+Transaction: 2qNHh9rxvcyfqAgNhSb6Qn4st5b3qKKPp5gMQTBSfiWr37CdqtCsUaVffm9rPta8rXYH7rYkGktiXs18nDeDAjwS
+Time: 2025-04-13T08:22:52.000Z
+Data: {
+  positionKey: '5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D',
+  positionSide: 'Long',
+  positionCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionCollateralCustody: '7xS2gz2bTp3fwCC7knJvUWTEU9Tycczu6VhJYKgi1wdz',
+  positionSizeUsd: '$1659334.67',
+  positionMint: 'So11111111111111111111111111111111111111112',
+  owner: 'CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1',
+  pool: '5BUwFW4nRbftYTDMbgxykoFWqWHPzahFSNAaaaJtVKsq',
+  sizeUsdDelta: '$1659334.67',
+  collateralUsdDelta: '$24091.20',
+  collateralTokenDelta: '187000000000',
+  price: '$128.82',
+  priceSlippage: '$131.38',
+  feeToken: '7728021826',
+  feeUsd: '$995.60',
+  openTime: '2025-04-13T08:22:52.000Z',
+  referral: null
+}
+============================
+
+
+======== TRADE SUMMARY ========
+Date range: From now back to 13.04.2025
+Active trades: 0
+Completed trades: 10
+
+------- COMPLETED TRADES -------
+
+Trade #1 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-9):
+Symbol: SOL
+Direction: Long
+Status: LIQUIDATED
+Entry Price: $149.06
+Exit Price: $147.94
+Size: $26478.24
+Notional Size: 177.634778 SOL
+Collateral: $284.68
+Leverage: 93.01x
+Total Fees: $86.75
+PnL: $197.92 (69.52%)
+Profitable: No
+Collateral Token: SOL
+Payout (USD): $0.00
+Payout (Token): 0.00 Unknown
+Opened: 2025-04-26T23:38:17.000Z
+Closed: 2025-04-27T01:32:06.000Z
+Events in trade: 2
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-26T23:38:17.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 177.634778 SOL
+     Size (USD): $26478.24
+     Price: $149.06
+     Fee: $18.53
+     Collateral (USD): $284.68
+  2. LiquidateFullPositionEvent
+     Date: 2025-04-27T01:32:06.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (USD): $26478.24
+     Price: $147.94
+     Payout (USD): $0.00
+     Payout (Token): 0.00 Unknown
+     Fee: $19.87
+     Liquidation Fee: $48.35
+     PnL: $197.92 (Loss)
+
+Trade #2 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-8):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $133.78
+Exit Price: $132.96
+Size: $176617.91
+Notional Size: 1320.211616 SOL
+Collateral: $1878.86
+Leverage: 94.00x
+Total Fees: $215.82
+PnL: $1082.76 (57.63%)
+Profitable: No
+Collateral Token: SOL
+Payout (USD): $580.28
+Payout (Token): 4.364167 SOL
+Opened: 2025-04-14T04:39:49.000Z
+Closed: 2025-04-14T05:37:29.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $134.52
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 827488947
+  Request Time: 2025-04-14T04:51:02.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-14T04:39:49.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 1320.211616 SOL
+     Size (USD): $176617.91
+     Price: $133.78
+     Fee: $105.97
+     Collateral (USD): $1878.86
+  2. InstantCreateTpslEvent
+     Date: 2025-04-14T04:51:09.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $134.52
+     Size: 100% of position
+     Take Profit Price: $134.52
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-14T05:37:29.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 1328.353715 SOL
+     Size (USD): $176617.91
+     Price: $132.96
+     Payout (USD): $580.28
+     Payout (Token): 4.364167 SOL
+     Fee: $109.85
+     Collateral (USD): $0.00
+     PnL: $1082.76 (Loss)
+
+Trade #3 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-7):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $132.87
+Exit Price: $133.29
+Size: $150310.39
+Notional Size: 1131.259050 SOL
+Collateral: $1599.70
+Leverage: 93.96x
+Total Fees: $180.56
+PnL: $463.81 (28.99%)
+Profitable: Yes
+Collateral Token: SOL
+Swaps: Closing
+  (Detected by token comparison)
+  Closing: SOL → USDC
+Payout (USD): $1882.95
+Payout (Token): 1880.32 USDC
+Implied Swap Fee: $2.63 (0.14%)
+Opened: 2025-04-14T04:27:07.000Z
+Closed: 2025-04-14T04:30:31.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $133.29
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 234287483
+  Request Time: 2025-04-14T04:27:30.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-14T04:27:07.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 1131.259050 SOL
+     Size (USD): $150310.39
+     Price: $132.87
+     Fee: $90.18
+     Collateral (USD): $1599.70
+  2. InstantCreateTpslEvent
+     Date: 2025-04-14T04:27:37.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $133.29
+     Size: 100% of position
+     Take Profit Price: $133.29
+     Take Profit Size: 100% of position
+  3. DecreasePositionEvent
+     Date: 2025-04-14T04:30:31.000Z
+     Action: Sell
+     Type: Limit
+     Trading: SOL (So111111...)
+     Using: USDC (EPjFWdd5...)
+     Size (Notional): 1127.694426 SOL
+     Size (USD): $150310.39
+     Price: $133.29
+     Payout (USD): $1882.95
+     Payout (Token): 1880.32 USDC
+     Fee: $90.38
+     Collateral (USD): $0.00
+     PnL: $463.81 (Profit)
+
+Trade #4 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-6):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $132.25
+Exit Price: $132.78
+Size: $118719.85
+Notional Size: 897.692628 SOL
+Collateral: $1263.19
+Leverage: 93.98x
+Total Fees: $143.27
+PnL: $479.33 (37.95%)
+Profitable: Yes
+Collateral Token: SOL
+Payout (USD): $1599.25
+Payout (Token): 12.043922 SOL
+Opened: 2025-04-14T04:09:06.000Z
+Closed: 2025-04-14T04:26:55.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $133.20
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 33575330
+  Request Time: 2025-04-14T04:23:05.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-14T04:09:06.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 897.692628 SOL
+     Size (USD): $118719.85
+     Price: $132.25
+     Fee: $71.23
+     Collateral (USD): $1263.19
+  2. InstantCreateTpslEvent
+     Date: 2025-04-14T04:23:12.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $133.20
+     Size: 100% of position
+     Take Profit Price: $133.20
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-14T04:26:55.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 894.109429 SOL
+     Size (USD): $118719.85
+     Price: $132.78
+     Payout (USD): $1599.25
+     Payout (Token): 12.043922 SOL
+     Fee: $72.04
+     Collateral (USD): $0.00
+     PnL: $479.33 (Profit)
+
+Trade #5 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-5):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $130.41
+Exit Price: $130.26
+Size: $640337.87
+Notional Size: 4910.189939 SOL
+Collateral: $8477.29
+Leverage: 75.54x
+Total Fees: $774.05
+PnL: $760.86 (8.98%)
+Profitable: No
+Collateral Token: SOL
+Payout (USD): $6942.37
+Payout (Token): 53.294244 SOL
+Opened: 2025-04-14T01:43:02.000Z
+Closed: 2025-04-14T02:05:52.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $131.42
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 440444122
+  Request Time: 2025-04-14T01:44:55.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-14T01:43:02.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 4910.189939 SOL
+     Size (USD): $640337.87
+     Price: $130.41
+     Fee: $384.20
+     Collateral (USD): $8477.29
+  2. InstantCreateTpslEvent
+     Date: 2025-04-14T01:45:02.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $131.42
+     Size: 100% of position
+     Take Profit Price: $131.42
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-14T02:05:52.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 4915.844235 SOL
+     Size (USD): $640337.87
+     Price: $130.26
+     Payout (USD): $6942.37
+     Payout (Token): 53.294244 SOL
+     Fee: $389.85
+     Collateral (USD): $0.00
+     PnL: $760.86 (Loss)
+
+Trade #6 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-4):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $131.14
+Exit Price: $131.34
+Size: $395210.18
+Notional Size: 3013.650907 SOL
+Collateral: $6819.62
+Leverage: 57.95x
+Total Fees: $480.80
+PnL: $584.11 (8.57%)
+Profitable: Yes
+Collateral Token: SOL
+Payout (USD): $6922.93
+Payout (Token): 52.709794 SOL
+Opened: 2025-04-14T00:49:33.000Z
+Closed: 2025-04-14T01:32:32.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $131.94
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 15327899
+  Request Time: 2025-04-14T00:51:57.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-14T00:49:33.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 3013.650907 SOL
+     Size (USD): $395210.18
+     Price: $131.14
+     Fee: $237.12
+     Collateral (USD): $6819.62
+  2. InstantCreateTpslEvent
+     Date: 2025-04-14T00:52:03.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $131.94
+     Size: 100% of position
+     Take Profit Price: $131.94
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-14T01:32:32.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 3009.061824 SOL
+     Size (USD): $395210.18
+     Price: $131.34
+     Payout (USD): $6922.93
+     Payout (Token): 52.709794 SOL
+     Fee: $243.68
+     Collateral (USD): $0.00
+     PnL: $584.11 (Profit)
+
+Trade #7 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-3):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $128.98
+Exit Price: $128.47
+Size: $1607913.34
+Notional Size: 12466.377268 SOL
+Collateral: $41492.61
+Leverage: 38.75x
+Total Fees: $3993.67
+PnL: $6398.87 (15.42%)
+Profitable: No
+Collateral Token: SOL
+Payout (USD): $31100.06
+Payout (Token): 242.067867 SOL
+Opened: 2025-04-13T14:41:27.000Z
+Closed: 2025-04-13T14:45:02.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $130.06
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 988626168
+  Request Time: 2025-04-13T14:41:41.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-13T14:41:27.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 12466.377268 SOL
+     Size (USD): $1607913.34
+     Price: $128.98
+     Fee: $964.74
+     Collateral (USD): $41492.61
+  2. InstantCreateTpslEvent
+     Date: 2025-04-13T14:41:48.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $130.06
+     Size: 100% of position
+     Take Profit Price: $130.06
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-13T14:45:02.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 12515.866272 SOL
+     Size (USD): $1607913.34
+     Price: $128.47
+     Payout (USD): $31100.06
+     Payout (Token): 242.067867 SOL
+     Fee: $3028.93
+     Collateral (USD): $0.00
+     PnL: $6398.87 (Loss)
+
+Trade #8 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-2):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $128.31
+Exit Price: $129.02
+Size: $1378121.41
+Notional Size: 10740.561219 SOL
+Collateral: $37564.46
+Leverage: 36.69x
+Total Fees: $3587.92
+PnL: $7582.55 (20.19%)
+Profitable: Yes
+Collateral Token: SOL
+Swaps: Closing
+  (Detected by token comparison)
+  Closing: SOL → USDC
+Payout (USD): $41559.09
+Payout (Token): 41496.76 USDC
+Implied Swap Fee: $62.33 (0.15%)
+Opened: 2025-04-13T14:31:58.000Z
+Closed: 2025-04-13T14:41:08.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantUpdateTpsl
+  Trigger Price: $129.02
+  Order Type: Take Profit
+  Size: 50% of position
+  Request Time: 2025-04-13T14:40:45.000Z
+Events in trade: 4
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-13T14:31:58.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 10740.561219 SOL
+     Size (USD): $1378121.41
+     Price: $128.31
+     Fee: $2756.24
+     Collateral (USD): $37564.46
+  2. InstantCreateTpslEvent
+     Date: 2025-04-13T14:32:49.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $129.66
+     Size: 100% of position
+     Take Profit Price: $129.66
+     Take Profit Size: 100% of position
+  3. InstantUpdateTpslEvent
+     Date: 2025-04-13T14:40:52.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $129.02
+     Size: 50% of position
+     Take Profit Price: $129.02
+     Take Profit Size: 50% of position
+  4. DecreasePositionEvent
+     Date: 2025-04-13T14:41:08.000Z
+     Action: Sell
+     Type: Limit
+     Trading: SOL (So111111...)
+     Using: USDC (EPjFWdd5...)
+     Size (Notional): 10681.455666 SOL
+     Size (USD): $1378121.41
+     Price: $129.02
+     Payout (USD): $41559.09
+     Payout (Token): 41496.76 USDC
+     Fee: $831.68
+     Collateral (USD): $0.00
+     PnL: $7582.55 (Profit)
+
+Trade #9 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-1):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $130.03
+Exit Price: $129.99
+Size: $2256458.07
+Notional Size: 17353.365147 SOL
+Collateral: $34587.98
+Leverage: 65.24x
+Total Fees: $6353.35
+PnL: $521.17 (1.51%)
+Profitable: No
+Collateral Token: SOL
+Payout (USD): $27713.45
+Payout (Token): 213.180456 SOL
+Opened: 2025-04-13T09:00:34.000Z
+Closed: 2025-04-13T11:15:24.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantCreateTpsl
+  Trigger Price: $132.98
+  Order Type: Take Profit
+  Size: 100% of position
+  Counter: 674961023
+  Request Time: 2025-04-13T09:30:15.000Z
+Events in trade: 3
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-13T09:00:34.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 17353.365147 SOL
+     Size (USD): $2256458.07
+     Price: $130.03
+     Fee: $3060.76
+     Collateral (USD): $34587.98
+  2. InstantCreateTpslEvent
+     Date: 2025-04-13T09:30:22.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $132.98
+     Size: 100% of position
+     Take Profit Price: $132.98
+     Take Profit Size: 100% of position
+  3. InstantDecreasePositionEvent
+     Date: 2025-04-13T11:15:24.000Z
+     Action: Sell
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 17358.705054 SOL
+     Size (USD): $2256458.07
+     Price: $129.99
+     Payout (USD): $27713.45
+     Payout (Token): 213.180456 SOL
+     Fee: $3292.59
+     Collateral (USD): $0.00
+     PnL: $521.17 (Loss)
+
+Trade #10 (ID: 5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D-0):
+Symbol: SOL
+Direction: Long
+Status: CLOSED
+Entry Price: $128.82
+Exit Price: $129.80
+Size: $1659334.67
+Notional Size: 12881.032992 SOL
+Collateral: $24091.20
+Leverage: 68.88x
+Total Fees: $2013.17
+PnL: $12494.06 (51.86%)
+Profitable: Yes
+Collateral Token: SOL
+Swaps: Closing
+  (Detected by token comparison)
+  Closing: SOL → USDC
+Payout (USD): $34572.09
+Payout (Token): 34516.49 USDC
+Implied Swap Fee: $55.60 (0.16%)
+Opened: 2025-04-13T08:22:52.000Z
+Closed: 2025-04-13T08:57:13.000Z
+TP/SL Orders: Take Profit
+  Instruction: instantUpdateTpsl
+  Trigger Price: $129.80
+  Order Type: Take Profit
+  Size: 50% of position
+  Request Time: 2025-04-13T08:56:33.000Z
+Events in trade: 5
+
+Events:
+  1. InstantIncreasePositionEvent
+     Date: 2025-04-13T08:22:52.000Z
+     Action: Buy
+     Type: Market
+     Trading: SOL (So111111...)
+     Size (Notional): 12881.032992 SOL
+     Size (USD): $1659334.67
+     Price: $128.82
+     Fee: $995.60
+     Collateral (USD): $24091.20
+  2. InstantCreateTpslEvent
+     Date: 2025-04-13T08:24:41.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $130.15
+     Size: 100% of position
+     Take Profit Price: $130.15
+     Take Profit Size: 100% of position
+  3. InstantUpdateTpslEvent
+     Date: 2025-04-13T08:41:00.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $131.00
+     Size: 50% of position
+     Take Profit Price: $131.00
+     Take Profit Size: 50% of position
+  4. InstantUpdateTpslEvent
+     Date: 2025-04-13T08:56:38.000Z
+     TP/SL Setting:
+     Order Type: Take Profit
+     Trigger Price: $129.80
+     Size: 50% of position
+     Take Profit Price: $129.80
+     Take Profit Size: 50% of position
+  5. DecreasePositionEvent
+     Date: 2025-04-13T08:57:13.000Z
+     Action: Sell
+     Type: Limit
+     Trading: SOL (So111111...)
+     Using: USDC (EPjFWdd5...)
+     Size (Notional): 12783.780200 SOL
+     Size (USD): $1659334.67
+     Price: $129.80
+     Payout (USD): $34572.09
+     Payout (Token): 34516.49 USDC
+     Fee: $1017.57
+     Collateral (USD): $0.00
+     PnL: $12494.06 (Profit)
+===============================
+Trade analysis complete
