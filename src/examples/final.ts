@@ -134,7 +134,7 @@ export async function getPositionEvents() {
   console.log("Getting signatures...");
   const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
     positionPDA,
-    { limit: 20 } // Only fetch 10 transactions AND minContextSlot for custom timeinterval 
+    { limit: 10 } // Only fetch 10 transactions AND minContextSlot for custom timeinterval 
   );
 
   if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
