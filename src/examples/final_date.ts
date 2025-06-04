@@ -344,12 +344,20 @@ export async function getPositionEvents(targetDateString?: string) {
                           entirePosition = instructionDataBuffer[offset] === 1;
                           offset += 1;
                           
+                          // Pad to 8-byte boundary for counter
+                          offset = Math.ceil(offset / 8) * 8;
+                          
                           counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
                           offset += 8;
                           
                           requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
                         } else {
                           // InstantUpdateTpsl structure (3 fields only)
+                          // Set defaults for fields not in update
+                          collateralUsdDelta = new BN(0);
+                          counter = new BN(0);
+                          
+                          // Read the actual fields
                           sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
                           offset += 8;
                           
@@ -358,20 +366,14 @@ export async function getPositionEvents(targetDateString?: string) {
                           
                           requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
                           
-                          // For update events, these fields don't exist in the IDL
-                          // We need to determine triggerAboveThreshold from context/price analysis
-                          const triggerPriceUSD = parseFloat(BNToUSDRepresentation(triggerPrice, USDC_DECIMALS));
+                          // For update events, determine triggerAboveThreshold from trigger price analysis
+                          // This is a best-effort approach - could be improved with more context
+                          triggerAboveThreshold = triggerPrice.toNumber() > 100 * 1e6; // Rough heuristic
                           
-                          // For long positions, if trigger price is reasonable (> $100 and < $200), 
-                          // it's likely a take profit. Otherwise it's probably a stop loss.
-                          triggerAboveThreshold = triggerPriceUSD > 100 && triggerPriceUSD < 200;
-                          entirePosition = false; // Default for update events 
-                          collateralUsdDelta = new BN(0);
-                          counter = new BN(0);
+                          // Set default for entirePosition - will be updated from original create event
+                          entirePosition = false;
                         }
-                        
-                        // Create the TPSL data object - if triggerAboveThreshold is true, it's a Take Profit
-                        // If false, it's a Stop Loss
+
                         tpslData = {
                           instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
                           params: {
@@ -381,38 +383,34 @@ export async function getPositionEvents(targetDateString?: string) {
                             triggerAboveThreshold,
                             entirePosition,
                             counter,
-                            requestTime,
-                            // For convenience, also include the interpreted values
-                            takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                            stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                            takeProfitSizePct: entirePosition ? 10000 : 5000, // Default to 100% for entire position, 50% otherwise
-                            stopLossSizePct: entirePosition ? 10000 : 5000
+                            requestTime
                           }
                         };
-                        
-                        // Add TP/SL data to the event
-                        if (formattedEvent.data) {
-                          // Add to the event data
-                          if (triggerAboveThreshold) {
-                            formattedEvent.data.takeProfitPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
-                            formattedEvent.data.takeProfitSizePercent = entirePosition ? 10000 : 5000;
-                          } else {
-                            formattedEvent.data.stopLossPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
-                            formattedEvent.data.stopLossSizePercent = entirePosition ? 10000 : 5000;
-                          }
-                          
-                          // Add all raw instruction parameters to the event data
-                          formattedEvent.data.tpslInstructionData = tpslData;
-                          formattedEvent.data.tpslCollateralUsdDelta = `$${BNToUSDRepresentation(collateralUsdDelta, USDC_DECIMALS)}`;
-                          formattedEvent.data.tpslSizeUsdDelta = `$${BNToUSDRepresentation(sizeUsdDelta, USDC_DECIMALS)}`;
-                          formattedEvent.data.tpslTriggerPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
-                          formattedEvent.data.tpslTriggerAboveThreshold = triggerAboveThreshold;
-                          formattedEvent.data.tpslEntirePosition = entirePosition;
-                          formattedEvent.data.tpslCounter = counter.toString();
-                          formattedEvent.data.tpslRequestTime = new Date(requestTime.toNumber() * 1000).toISOString();
+
+                        // Store original create event data for linking
+                        if (isCreateTpsl) {
+                          // For create events, we have the complete data including size percentage
+                          console.log(`Found instantCreateTpsl instruction with entirePosition: ${entirePosition}`);
+                        } else {
+                          // For update events, we only have the limited fields from the IDL
+                          console.log(`Found instantUpdateTpsl instruction - size percentage should come from original create event`);
                         }
                         
-                        break;
+                        // Add the instruction data to the event data
+                        formattedEvent.data.tpslInstructionData = tpslData;
+                        
+                        // Add parsed fields to event data for easy access
+                        formattedEvent.data.tpslCollateralUsdDelta = `$${BNToUSDRepresentation(collateralUsdDelta, USDC_DECIMALS)}`;
+                        formattedEvent.data.tpslSizeUsdDelta = `$${BNToUSDRepresentation(sizeUsdDelta, USDC_DECIMALS)}`;
+                        formattedEvent.data.tpslTriggerPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
+                        formattedEvent.data.tpslTriggerAboveThreshold = triggerAboveThreshold;
+                        formattedEvent.data.tpslEntirePosition = entirePosition;
+                        formattedEvent.data.tpslCounter = counter.toString();
+                        formattedEvent.data.tpslRequestTime = requestTime.toNumber() !== 0 ? 
+                          new Date(requestTime.toNumber() * 1000).toISOString() : 
+                          null;
+                        
+                        break; // Exit the loop once we find the instruction
                       }
                     }
                   }
@@ -609,12 +607,20 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
               entirePosition = instructionDataBuffer[offset] === 1;
               offset += 1;
               
+              // Pad to 8-byte boundary for counter
+              offset = Math.ceil(offset / 8) * 8;
+              
               counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
               offset += 8;
               
               requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
             } else {
               // InstantUpdateTpsl structure (3 fields only)
+              // Set defaults for fields not in update
+              collateralUsdDelta = new BN(0);
+              counter = new BN(0);
+              
+              // Read the actual fields
               sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
               offset += 8;
               
@@ -623,16 +629,34 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
               
               requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
               
-              // For update events, these fields don't exist in the IDL
-              // We need to determine triggerAboveThreshold from context/price analysis
-              const triggerPriceUSD = parseFloat(BNToUSDRepresentation(triggerPrice, USDC_DECIMALS));
+              // For update events, determine triggerAboveThreshold from trigger price analysis
+              // This is a best-effort approach - could be improved with more context
+              triggerAboveThreshold = triggerPrice.toNumber() > 100 * 1e6; // Rough heuristic
               
-              // For long positions, if trigger price is reasonable (> $100 and < $200), 
-              // it's likely a take profit. Otherwise it's probably a stop loss.
-              triggerAboveThreshold = triggerPriceUSD > 100 && triggerPriceUSD < 200;
-              entirePosition = false; // Default for update events 
-              collateralUsdDelta = new BN(0);
-              counter = new BN(0);
+              // Set default for entirePosition - will be updated from original create event
+              entirePosition = false;
+            }
+
+            const tpslData = {
+              instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
+              params: {
+                collateralUsdDelta,
+                sizeUsdDelta,
+                triggerPrice,
+                triggerAboveThreshold,
+                entirePosition,
+                counter,
+                requestTime
+              }
+            };
+
+            // Store original create event data for linking
+            if (isCreateTpsl) {
+              // For create events, we have the complete data including size percentage
+              console.log(`Found instantCreateTpsl instruction with entirePosition: ${entirePosition}`);
+            } else {
+              // For update events, we only have the limited fields from the IDL
+              console.log(`Found instantUpdateTpsl instruction - size percentage should come from original create event`);
             }
             
             return {
@@ -644,12 +668,7 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
                 triggerAboveThreshold,
                 entirePosition,
                 counter,
-                requestTime,
-                // For convenience, also include the interpreted values
-                takeProfitTriggerPrice: triggerAboveThreshold ? triggerPrice : null,
-                stopLossTriggerPrice: !triggerAboveThreshold ? triggerPrice : null,
-                takeProfitSizePct: entirePosition ? 10000 : 5000,
-                stopLossSizePct: entirePosition ? 10000 : 5000
+                requestTime
               }
             };
           }
@@ -1184,6 +1203,23 @@ function formatTpslInstructionData(data: any): string {
   return output.join(", ");
 }
 
+// Helper function to find the original create event for an update event
+function findOriginalCreateTpslEvent(events: EventWithTx[], updateEvent: any): any | null {
+  const updateRequestKey = updateEvent.event.data.positionRequestKey;
+  if (!updateRequestKey) return null;
+  
+  // Find the most recent create event with the same positionRequestKey
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (event?.event?.name === 'InstantCreateTpslEvent' && 
+        event.event.data.positionRequestKey === updateRequestKey &&
+        event.event.data.tpslInstructionData) {
+      return event.event.data.tpslInstructionData;
+    }
+  }
+  return null;
+}
+
 /**
  * Get the complete trade history for a specific position PDA with optional date filtering
  */
@@ -1213,6 +1249,21 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
           console.log("TP/SL Instruction Data:");
           console.log(`  Instruction: ${tpslInstructionData.instructionName}`);
           
+          // For update events, try to find the original create event to get correct values
+          let actualEntirePosition = eventData.tpslEntirePosition;
+          let actualSizePercentage = "Size from original create event";
+          
+          if (tpslInstructionData.instructionName === 'instantUpdateTpsl') {
+            const originalCreateData = findOriginalCreateTpslEvent(events, evt);
+            if (originalCreateData && originalCreateData.params) {
+              actualEntirePosition = originalCreateData.params.entirePosition;
+              actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+            }
+          } else if (tpslInstructionData.instructionName === 'instantCreateTpsl') {
+            // For create events, use the values directly from the event
+            actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+          }
+          
           // Only show collateral delta for create events
           if (tpslInstructionData.instructionName === 'instantCreateTpsl') {
             console.log(`  Collateral USD Delta: ${eventData.tpslCollateralUsdDelta || '$0.00'}`);
@@ -1221,7 +1272,7 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
           console.log(`  Size USD Delta: ${eventData.tpslSizeUsdDelta || '$0.00'}`);
           console.log(`  Trigger Price: ${eventData.tpslTriggerPrice || 'N/A'}`);
           console.log(`  Trigger Above Threshold: ${eventData.tpslTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
-          console.log(`  Entire Position: ${eventData.tpslEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
+          console.log(`  Entire Position: ${actualEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
           
           if (eventData.tpslCounter && eventData.tpslCounter !== '0') console.log(`  Counter: ${eventData.tpslCounter}`);
           if (eventData.tpslRequestTime && eventData.tpslRequestTime !== '1970-01-01T00:00:00.000Z') console.log(`  Request Time: ${eventData.tpslRequestTime}`);
@@ -1231,10 +1282,10 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
           
           if (eventData.tpslTriggerAboveThreshold) {
             console.log(`  Take Profit Price: ${eventData.tpslTriggerPrice}`);
-            console.log(`  Take Profit Size: ${eventData.tpslEntirePosition ? '100%' : '50%'}`);
+            console.log(`  Take Profit Size: ${actualSizePercentage}`);
           } else {
             console.log(`  Stop Loss Price: ${eventData.tpslTriggerPrice}`);
-            console.log(`  Stop Loss Size: ${eventData.tpslEntirePosition ? '100%' : '50%'}`);
+            console.log(`  Stop Loss Size: ${actualSizePercentage}`);
           }
         } else {
           console.log("TP/SL Instruction Data: Fetching from transaction...");
@@ -1246,6 +1297,21 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               // Show all raw parameters
               console.log(`  Instruction: ${tpslData.instructionName}`);
               
+              // For update events, try to find the original create event to get correct values
+              let actualEntirePosition = tpslData.params.entirePosition;
+              let actualSizePercentage = "Size from original create event";
+              
+              if (tpslData.instructionName === 'instantUpdateTpsl') {
+                const originalCreateData = findOriginalCreateTpslEvent(events, evt);
+                if (originalCreateData && originalCreateData.params) {
+                  actualEntirePosition = originalCreateData.params.entirePosition;
+                  actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+                }
+              } else if (tpslData.instructionName === 'instantCreateTpsl') {
+                // For create events, use the values directly from the event
+                actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+              }
+              
               // Only show collateral delta for create events
               if (tpslData.instructionName === 'instantCreateTpsl') {
                 console.log(`  Collateral USD Delta: $${BNToUSDRepresentation(tpslData.params.collateralUsdDelta, USDC_DECIMALS)}`);
@@ -1254,7 +1320,7 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               console.log(`  Size USD Delta: $${BNToUSDRepresentation(tpslData.params.sizeUsdDelta, USDC_DECIMALS)}`);
               console.log(`  Trigger Price: $${BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS)}`);
               console.log(`  Trigger Above Threshold: ${tpslData.params.triggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
-              console.log(`  Entire Position: ${tpslData.params.entirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
+              console.log(`  Entire Position: ${actualEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
               
               if (tpslData.params.counter && tpslData.params.counter.toString() !== '0') 
                 console.log(`  Counter: ${tpslData.params.counter.toString()}`);
@@ -1267,14 +1333,14 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               // Show interpreted values
               console.log(`  Order Type: ${tpslData.params.triggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
               
-              if (tpslData.params.triggerAboveThreshold && tpslData.params.takeProfitTriggerPrice) {
-                const tpPrice = BNToUSDRepresentation(tpslData.params.takeProfitTriggerPrice, USDC_DECIMALS);
+              if (tpslData.params.triggerAboveThreshold) {
+                const tpPrice = BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS);
                 console.log(`  Take Profit Price: $${tpPrice}`);
-                console.log(`  Take Profit Size: ${tpslData.params.entirePosition ? '100%' : '50%'}`);
-              } else if (!tpslData.params.triggerAboveThreshold && tpslData.params.stopLossTriggerPrice) {
-                const slPrice = BNToUSDRepresentation(tpslData.params.stopLossTriggerPrice, USDC_DECIMALS);
+                console.log(`  Take Profit Size: ${actualSizePercentage}`);
+              } else {
+                const slPrice = BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS);
                 console.log(`  Stop Loss Price: $${slPrice}`);
-                console.log(`  Stop Loss Size: ${tpslData.params.entirePosition ? '100%' : '50%'}`);
+                console.log(`  Stop Loss Size: ${actualSizePercentage}`);
               }
             } else {
               console.log("  Failed to extract TP/SL instruction data from transaction");
@@ -1630,13 +1696,28 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         const isTP = data.tpslTriggerAboveThreshold;
         const isSL = !data.tpslTriggerAboveThreshold;
         
+        // For update events, try to find the original create event to get correct values
+        let actualEntirePosition = data.tpslEntirePosition;
+        let actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+        
+        if (tpslData.instructionName === 'instantUpdateTpsl') {
+          const originalCreateData = findOriginalCreateTpslEvent(trade.events, tpslEvent);
+          if (originalCreateData && originalCreateData.params) {
+            actualEntirePosition = originalCreateData.params.entirePosition;
+            actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+          }
+        } else if (tpslData.instructionName === 'instantCreateTpsl') {
+          // For create events, use the values directly from the event
+          actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+        }
+        
         console.log(`TP/SL Orders: ${isTP ? 'Take Profit' : ''}${isTP && isSL ? ' and ' : ''}${isSL ? 'Stop Loss' : ''}`);
         
         // Show all the TP/SL instruction parameters
         console.log(`  Instruction: ${tpslData.instructionName}`);
         console.log(`  Trigger Price: ${data.tpslTriggerPrice}`);
         console.log(`  Order Type: ${isTP ? 'Take Profit' : 'Stop Loss'}`);
-        console.log(`  Size: ${data.tpslEntirePosition ? '100%' : '50%'} of position`);
+        console.log(`  Size: ${actualSizePercentage} of position`);
         
         if (data.tpslCollateralUsdDelta && data.tpslCollateralUsdDelta !== '$0.00') 
           console.log(`  Collateral USD Delta: ${data.tpslCollateralUsdDelta}`);
@@ -1649,10 +1730,7 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         
         if (data.tpslRequestTime)
           console.log(`  Request Time: ${data.tpslRequestTime}`);
-      } 
-      // ... rest of the existing function
-    } else {
-      console.log(`TP/SL Orders: Set`);
+      }
     }
   }
   
@@ -1791,17 +1869,32 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
           console.log(`     Trigger Price: ${eventData.tpslTriggerPrice}`);
         }
         
-        // Show size percentage
-        const sizePercent = eventData.tpslEntirePosition ? "100%" : "50%";
-        console.log(`     Size: ${sizePercent} of position`);
+        // For update events, try to find the original create event to get correct values
+        let actualEntirePosition = eventData.tpslEntirePosition;
+        let actualSizePercentage = actualEntirePosition ? "100%" : "50%";
         
-        // Show specific TP/SL values if available
+        if (eventType === 'InstantUpdateTpslEvent') {
+          const originalCreateData = findOriginalCreateTpslEvent(trade.events, evt);
+          if (originalCreateData && originalCreateData.params) {
+            actualEntirePosition = originalCreateData.params.entirePosition;
+            actualSizePercentage = actualEntirePosition ? "100%" : "50%";
+          }
+        }
+        
+        // Show size percentage
+        console.log(`     Size: ${actualSizePercentage} of position`);
+        
+        // Show specific TP/SL values if available (legacy support)
         if (isTakeProfit && eventData.takeProfitPrice) {
           console.log(`     Take Profit Price: ${eventData.takeProfitPrice}`);
-          console.log(`     Take Profit Size: ${eventData.takeProfitSizePercent / 100}% of position`);
+          if (eventData.takeProfitSizePercent) {
+            console.log(`     Take Profit Size: ${eventData.takeProfitSizePercent / 100}% of position`);
+          }
         } else if (!isTakeProfit && eventData.stopLossPrice) {
           console.log(`     Stop Loss Price: ${eventData.stopLossPrice}`);
-          console.log(`     Stop Loss Size: ${eventData.stopLossSizePercent / 100}% of position`);
+          if (eventData.stopLossSizePercent) {
+            console.log(`     Stop Loss Size: ${eventData.stopLossSizePercent / 100}% of position`);
+          }
         }
       }
       // For regular events (not pool swap or TP/SL)
