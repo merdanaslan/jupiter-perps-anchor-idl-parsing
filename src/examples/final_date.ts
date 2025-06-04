@@ -368,7 +368,8 @@ export async function getPositionEvents(targetDateString?: string) {
                           
                           // For update events, determine triggerAboveThreshold from trigger price analysis
                           // This is a best-effort approach - could be improved with more context
-                          triggerAboveThreshold = triggerPrice.toNumber() > 100 * 1e6; // Rough heuristic
+                          // triggerAboveThreshold not available in InstantUpdateTpslParams IDL - will be retrieved from original create event
+                          triggerAboveThreshold = false; // Placeholder
                           
                           // Set default for entirePosition - will be updated from original create event
                           entirePosition = false;
@@ -631,7 +632,8 @@ async function getTpslInstructionData(txSignature: string): Promise<any> {
               
               // For update events, determine triggerAboveThreshold from trigger price analysis
               // This is a best-effort approach - could be improved with more context
-              triggerAboveThreshold = triggerPrice.toNumber() > 100 * 1e6; // Rough heuristic
+              // triggerAboveThreshold not available in InstantUpdateTpslParams IDL - will be retrieved from original create event
+                          triggerAboveThreshold = false; // Placeholder
               
               // Set default for entirePosition - will be updated from original create event
               entirePosition = false;
@@ -1693,8 +1695,18 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
       // First check if we have instruction data directly in the event
       if (data.tpslInstructionData && data.tpslInstructionData.params) {
         const tpslData = data.tpslInstructionData;
-        const isTP = data.tpslTriggerAboveThreshold;
-        const isSL = !data.tpslTriggerAboveThreshold;
+        
+        // For UPDATE events, retrieve triggerAboveThreshold from original CREATE event
+        let actualTriggerAboveThreshold = data.tpslTriggerAboveThreshold;
+        if (tpslData.instructionName === 'instantUpdateTpsl') {
+          const originalCreateData = findOriginalCreateTpslEvent(trade.events, tpslEvent);
+          if (originalCreateData && originalCreateData.params) {
+            actualTriggerAboveThreshold = originalCreateData.params.triggerAboveThreshold;
+          }
+        }
+        
+        const isTP = actualTriggerAboveThreshold;
+        const isSL = !actualTriggerAboveThreshold;
         
         // For update events, try to find the original create event to get correct values
         let actualEntirePosition = data.tpslEntirePosition;
@@ -1859,8 +1871,17 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         console.log(`     Date: ${eventTime}`);
         console.log(`     TP/SL Setting:`);
         
+        // For UPDATE events, retrieve triggerAboveThreshold from original CREATE event
+        let actualTriggerAboveThreshold = eventData.tpslTriggerAboveThreshold;
+        if (eventType === 'InstantUpdateTpslEvent') {
+          const originalCreateData = findOriginalCreateTpslEvent(trade.events, evt);
+          if (originalCreateData && originalCreateData.params) {
+            actualTriggerAboveThreshold = originalCreateData.params.triggerAboveThreshold;
+          }
+        }
+        
         // Determine if Take Profit or Stop Loss
-        const isTakeProfit = eventData.tpslTriggerAboveThreshold === true;
+        const isTakeProfit = actualTriggerAboveThreshold === true;
         const orderType = isTakeProfit ? "Take Profit" : "Stop Loss";
         console.log(`     Order Type: ${orderType}`);
         
