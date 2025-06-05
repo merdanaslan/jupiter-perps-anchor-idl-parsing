@@ -4,11 +4,113 @@ import {
   RPC_CONNECTION,
   USDC_DECIMALS,
   CUSTODY_PUBKEY,
+  JLP_POOL_ACCOUNT_PUBKEY,
+  JUPITER_PERPETUALS_PROGRAM_ID,
+  CUSTODY_PUBKEYS,
 } from "../constants";
 import { PublicKey } from "@solana/web3.js";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
 import { BN } from "@coral-xyz/anchor";
 import { BNToUSDRepresentation } from "../utils";
+
+// Position PDA generation functions (imported from generate-position-and-position-request-pda.ts)
+function generatePositionPda({
+  custody,
+  collateralCustody,
+  walletAddress,
+  side,
+}: {
+  custody: PublicKey;
+  collateralCustody: PublicKey;
+  walletAddress: PublicKey;
+  side: "long" | "short";
+}) {
+  const [position, bump] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("position"),
+      walletAddress.toBuffer(),
+      JLP_POOL_ACCOUNT_PUBKEY.toBuffer(),
+      custody.toBuffer(),
+      collateralCustody.toBuffer(),
+      // @ts-ignore
+      side === "long" ? [1] : [2], // This is due to how the `Side` enum is structured in the contract
+    ],
+    JUPITER_PERPETUALS_PROGRAM_ID,
+  );
+
+  return { position, bump };
+}
+
+// Helper function to get asset name from custody pubkey
+function getAssetNameFromCustodyPda(custodyPubkey: string): string {
+  switch(custodyPubkey) {
+    case CUSTODY_PUBKEY.SOL:
+      return "SOL";
+    case CUSTODY_PUBKEY.ETH:
+      return "ETH";
+    case CUSTODY_PUBKEY.BTC:
+      return "BTC";
+    case CUSTODY_PUBKEY.USDC:
+      return "USDC";
+    case CUSTODY_PUBKEY.USDT:
+      return "USDT";
+    default:
+      return "Unknown";
+  }
+}
+
+// Generate all possible position PDAs for a wallet
+function generateAllPositionPdas(walletAddress: string) {
+  const walletPubkey = new PublicKey(walletAddress);
+  
+  // Results container
+  const results: Array<{
+    type: string;
+    positionPda: PublicKey;
+    description: string;
+  }> = [];
+  
+  // Loop through all custodies (SOL, BTC, ETH)
+  for (let i = 0; i < 3; i++) {
+    const assetCustody = CUSTODY_PUBKEYS[i];
+    const assetName = getAssetNameFromCustodyPda(assetCustody.toBase58());
+    
+    // Generate Long position PDA
+    const longPosition = generatePositionPda({
+      custody: assetCustody,
+      collateralCustody: assetCustody, // For long, custody and collateralCustody are the same
+      walletAddress: walletPubkey,
+      side: "long",
+    });
+    
+    results.push({
+      type: "Long",
+      positionPda: longPosition.position,
+      description: `Long ${assetName} (using ${assetName} as collateral)`,
+    });
+    
+    // Generate Short positions with USDC and USDT as collateral
+    for (let j = 3; j < 5; j++) { // USDC and USDT are at index 3 and 4
+      const stableCustody = CUSTODY_PUBKEYS[j];
+      const stableName = getAssetNameFromCustodyPda(stableCustody.toBase58());
+      
+      const shortPosition = generatePositionPda({
+        custody: assetCustody,
+        collateralCustody: stableCustody,
+        walletAddress: walletPubkey,
+        side: "short",
+      });
+      
+      results.push({
+        type: "Short",
+        positionPda: shortPosition.position,
+        description: `Short ${assetName} (using ${stableName} as collateral)`,
+      });
+    }
+  }
+  
+  return results;
+}
 
 type AnchorIdlEvent<EventName extends keyof IdlEvents<Perpetuals>> = {
   name: EventName;
@@ -132,307 +234,339 @@ function shouldContinueFetching(blockTime: number | null, targetDate: Date): boo
   return txDate >= targetDate;
 }
 
-export async function getPositionEvents(targetDateString?: string) {
-  // Use specific position PDA
-  const positionPDA = new PublicKey("5RUuGzNkb6pnQdhpCTYfwf1TTnm1omVSvmZUHcXiuG6D");
+export async function getPositionEvents(targetDateString?: string, walletAddress?: string) {
+  // Default wallet address if not provided
+  const defaultWalletAddress = "CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1";
+  const wallet = walletAddress || defaultWalletAddress;
+  
+  // Generate all possible position PDAs for the wallet
+  console.log(`\nGenerating position PDAs for wallet: ${wallet}`);
+  const positionPdas = generateAllPositionPdas(wallet);
+  
+  console.log(`Found ${positionPdas.length} possible position PDAs:`);
+  positionPdas.forEach((pda, index) => {
+    console.log(`  ${index + 1}. ${pda.description}`);
+    console.log(`     PDA: ${pda.positionPda.toBase58()}`);
+  });
   
   // Parse target date (default to 30 days ago if not provided)
   const targetDate = targetDateString 
     ? parseDate(targetDateString)
     : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
   
-  console.log(`Getting signatures from now until ${targetDate.toLocaleDateString('en-GB')}...`);
+  console.log(`\nGetting signatures from now until ${targetDate.toLocaleDateString('en-GB')}...`);
   
-  const allSignatures: any[] = [];
-  let beforeSignature: string | undefined = undefined;
-  let hasMoreTransactions = true;
-  let totalFetched = 0;
+  // Collect all events from all PDAs
+  const allEvents: any[] = [];
   
-  // Fetch transactions in batches until we reach the target date
-  while (hasMoreTransactions && totalFetched < 1000) { // Safety limit of 1000 transactions
-    const options: any = { limit: 100 }; // Fetch 100 at a time for better performance
-    if (beforeSignature) {
-      options.before = beforeSignature;
+  // Process each PDA
+  for (let pdaIndex = 0; pdaIndex < positionPdas.length; pdaIndex++) {
+    const currentPda = positionPdas[pdaIndex];
+    console.log(`\n=== Processing PDA ${pdaIndex + 1}/${positionPdas.length}: ${currentPda.description} ===`);
+    
+    // Add delay between PDA processing to avoid rate limits
+    if (pdaIndex > 0) {
+      console.log(`Waiting 10 seconds before processing next PDA to avoid rate limits...`);
+      await new Promise(resolve => setTimeout(resolve, 10000));
     }
     
-    const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
-      positionPDA,
-      options
-    );
+    const allSignatures: any[] = [];
+    let beforeSignature: string | undefined = undefined;
+    let hasMoreTransactions = true;
+    let totalFetched = 0;
+    
+    // Fetch transactions in batches until we reach the target date
+    while (hasMoreTransactions && totalFetched < 1000) { // Safety limit of 1000 transactions per PDA
+      const options: any = { limit: 100 }; // Fetch 100 at a time for better performance
+      if (beforeSignature) {
+        options.before = beforeSignature;
+      }
+      
+      const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
+        currentPda.positionPda,
+        options
+      );
 
-    if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
-      console.log("No more transactions found");
-      break;
-    }
-    
-    totalFetched += confirmedSignatureInfos.length;
-    console.log(`Fetched ${confirmedSignatureInfos.length} signatures (total: ${totalFetched})`);
-    
-    // Check if we've reached our target date
-    for (const sigInfo of confirmedSignatureInfos) {
-      const blockTime = sigInfo.blockTime ?? null;
-      if (!shouldContinueFetching(blockTime, targetDate)) {
-        console.log(`Reached target date ${targetDate.toLocaleDateString('en-GB')}, stopping fetch`);
-        hasMoreTransactions = false;
+      if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
+        console.log(`No more transactions found for ${currentPda.description}`);
         break;
       }
-      allSignatures.push(sigInfo);
+      
+      totalFetched += confirmedSignatureInfos.length;
+      console.log(`Fetched ${confirmedSignatureInfos.length} signatures (total: ${totalFetched} for this PDA)`);
+      
+      // Check if we've reached our target date
+      for (const sigInfo of confirmedSignatureInfos) {
+        const blockTime = sigInfo.blockTime ?? null;
+        if (!shouldContinueFetching(blockTime, targetDate)) {
+          console.log(`Reached target date ${targetDate.toLocaleDateString('en-GB')} for ${currentPda.description}, stopping fetch`);
+          hasMoreTransactions = false;
+          break;
+        }
+        allSignatures.push(sigInfo);
+      }
+      
+      // Set up for next batch
+      if (hasMoreTransactions && confirmedSignatureInfos.length === 100) {
+        beforeSignature = confirmedSignatureInfos[confirmedSignatureInfos.length - 1].signature;
+      } else {
+        hasMoreTransactions = false;
+      }
     }
-    
-    // Set up for next batch
-    if (hasMoreTransactions && confirmedSignatureInfos.length === 100) {
-      beforeSignature = confirmedSignatureInfos[confirmedSignatureInfos.length - 1].signature;
-    } else {
-      hasMoreTransactions = false;
-    }
-  }
 
-  if (allSignatures.length === 0) {
-    console.log("No transactions found for this position in the specified date range");
-    return [];
-  }
-  
-  console.log(`Found ${allSignatures.length} transactions within date range`);
-  
-  // Process transactions with our existing logic
-  const allEvents = [];
-  
-  for (let i = 0; i < allSignatures.length; i++) {
-    if (allSignatures[i].err) {
-      console.log(`Skipping failed transaction: ${allSignatures[i].signature}`);
-      continue;
+    if (allSignatures.length === 0) {
+      console.log(`No transactions found for ${currentPda.description} in the specified date range`);
+      continue; // Move to next PDA
     }
     
-    // Add a delay between each transaction processing to avoid rate limits
-    if (i > 0) {
-      console.log(`Waiting 5 seconds before processing next transaction...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
+    console.log(`Found ${allSignatures.length} transactions for ${currentPda.description} within date range`);
     
-    try {
-      console.log(`Processing transaction ${i+1}/${allSignatures.length}: ${allSignatures[i].signature}`);
-      
-      // Use our retry function
-      const tx = await fetchTransactionWithRetry(allSignatures[i].signature);
-      
-      if (!tx || !tx.meta || !tx.meta.innerInstructions) {
-        console.log("No inner instructions found in transaction");
+    // Process transactions for this PDA
+    for (let i = 0; i < allSignatures.length; i++) {
+      if (allSignatures[i].err) {
+        console.log(`Skipping failed transaction: ${allSignatures[i].signature}`);
         continue;
       }
       
-      const txEvents = tx.meta.innerInstructions.flatMap((ix: { instructions: any[] }) => {
-        return ix.instructions.map((iix: { data: string }) => {
-          try {
-            const ixData = utils.bytes.bs58.decode(iix.data);
-            const eventData = utils.bytes.base64.encode(
-              ixData.subarray(DISCRIMINATOR_SIZE)
-            );
-            const decodedEvent = JUPITER_PERPETUALS_PROGRAM.coder.events.decode(eventData);
-            
-            // Debugging: Log event names
-            if (decodedEvent) {
-              console.log(`Found event: ${decodedEvent.name}`);
-            }
-            
-            // Format the event data for human readability
-            const formattedEvent = formatEventData(decodedEvent);
-            
-            // Get transaction fee (safe because we already checked tx.meta != null)
-            const feeInSOL = tx.meta!.fee / 1_000_000_000; // Convert lamports to SOL
-            
-            const eventWithTx = {
-              event: formattedEvent,
-              tx: {
-                signature: allSignatures[i].signature,
-                blockTime: tx.blockTime 
-                  ? new Date(tx.blockTime * 1000).toISOString()
-                  : null,
-                fee: `${feeInSOL} SOL`,
-                feeInLamports: tx.meta!.fee
+      // Add a delay between each transaction processing to avoid rate limits
+      if (i > 0) {
+        console.log(`Waiting 5 seconds before processing next transaction...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      
+      try {
+        console.log(`Processing transaction ${i+1}/${allSignatures.length} for ${currentPda.description}: ${allSignatures[i].signature}`);
+        
+        // Use our retry function
+        const tx = await fetchTransactionWithRetry(allSignatures[i].signature);
+        
+        if (!tx || !tx.meta || !tx.meta.innerInstructions) {
+          console.log("No inner instructions found in transaction");
+          continue;
+        }
+        
+        const txEvents = tx.meta.innerInstructions.flatMap((ix: { instructions: any[] }) => {
+          return ix.instructions.map((iix: { data: string }) => {
+            try {
+              const ixData = utils.bytes.bs58.decode(iix.data);
+              const eventData = utils.bytes.base64.encode(
+                ixData.subarray(DISCRIMINATOR_SIZE)
+              );
+              const decodedEvent = JUPITER_PERPETUALS_PROGRAM.coder.events.decode(eventData);
+              
+              // Debugging: Log event names
+              if (decodedEvent) {
+                console.log(`Found event: ${decodedEvent.name}`);
               }
-            };
-            
-            // For TP/SL events, fetch the instruction data immediately
-            if (formattedEvent && (
-                formattedEvent.name === 'InstantCreateTpslEvent' || 
-                formattedEvent.name === 'InstantUpdateTpslEvent')
-            ) {
-              // We'll try to extract TP/SL parameters from the transaction
-              let tpslData = null;
-              try {
-                // Get all instructions in the transaction - handle versioned transactions
-                let instructions;
-                let accountKeys;
-                
-                if ('message' in tx.transaction) {
-                  const message = tx.transaction.message;
+              
+              // Format the event data for human readability
+              const formattedEvent = formatEventData(decodedEvent);
+              
+              // Get transaction fee (safe because we already checked tx.meta != null)
+              const feeInSOL = tx.meta!.fee / 1_000_000_000; // Convert lamports to SOL
+              
+              const eventWithTx = {
+                event: formattedEvent,
+                tx: {
+                  signature: allSignatures[i].signature,
+                  blockTime: tx.blockTime 
+                    ? new Date(tx.blockTime * 1000).toISOString()
+                    : null,
+                  fee: `${feeInSOL} SOL`,
+                  feeInLamports: tx.meta!.fee
+                }
+              };
+              
+              // For TP/SL events, fetch the instruction data immediately
+              if (formattedEvent && (
+                  formattedEvent.name === 'InstantCreateTpslEvent' || 
+                  formattedEvent.name === 'InstantUpdateTpslEvent')
+              ) {
+                // We'll try to extract TP/SL parameters from the transaction
+                let tpslData = null;
+                try {
+                  // Get all instructions in the transaction - handle versioned transactions
+                  let instructions;
+                  let accountKeys;
                   
-                  // For versioned transactions
-                  if ('version' in message) {
-                    // For MessageV0
-                    instructions = message.compiledInstructions;
-                    try {
-                      // For versioned transactions with lookup tables
-                      if (tx.meta?.loadedAddresses) {
-                        // Use staticAccountKeys and loaded addresses
-                        const staticKeys = message.staticAccountKeys || [];
-                        const writableKeys = tx.meta.loadedAddresses.writable || [];
-                        const readonlyKeys = tx.meta.loadedAddresses.readonly || [];
-                        accountKeys = [...staticKeys, ...writableKeys, ...readonlyKeys];
-                      } else {
+                  if ('message' in tx.transaction) {
+                    const message = tx.transaction.message;
+                    
+                    // For versioned transactions
+                    if ('version' in message) {
+                      // For MessageV0
+                      instructions = message.compiledInstructions;
+                      try {
+                        // For versioned transactions with lookup tables
+                        if (tx.meta?.loadedAddresses) {
+                          // Use staticAccountKeys and loaded addresses
+                          const staticKeys = message.staticAccountKeys || [];
+                          const writableKeys = tx.meta.loadedAddresses.writable || [];
+                          const readonlyKeys = tx.meta.loadedAddresses.readonly || [];
+                          accountKeys = [...staticKeys, ...writableKeys, ...readonlyKeys];
+                        } else {
+                          accountKeys = message.staticAccountKeys || [];
+                        }
+                      } catch (err) {
+                        console.log("Error getting account keys, using static keys:", err);
                         accountKeys = message.staticAccountKeys || [];
                       }
-                    } catch (err) {
-                      console.log("Error getting account keys, using static keys:", err);
-                      accountKeys = message.staticAccountKeys || [];
+                    } else {
+                      // For legacy transactions
+                      instructions = (message as any).instructions;
+                      accountKeys = (message as any).accountKeys;
                     }
-                  } else {
-                    // For legacy transactions
-                    instructions = (message as any).instructions;
-                    accountKeys = (message as any).accountKeys;
                   }
-                }
-                
-                if (instructions && accountKeys) {
-                  // Find the TP/SL instruction
-                  for (const ix of instructions) {
-                    // Skip if no programId index
-                    if (ix.programIdIndex === undefined) continue;
-                    
-                    // Get program ID
-                    const programId = accountKeys[ix.programIdIndex];
-                    
-                    // Check if this is a Jupiter Perpetuals instruction
-                    if (programId.toString() === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
-                      // Get the instruction data
-                      const data = Buffer.from(ix.data);
+                  
+                  if (instructions && accountKeys) {
+                    // Find the TP/SL instruction
+                    for (const ix of instructions) {
+                      // Skip if no programId index
+                      if (ix.programIdIndex === undefined) continue;
                       
-                      // Check for TP/SL instruction discriminators
-                      const discriminator = data.slice(0, 8);
+                      // Get program ID
+                      const programId = accountKeys[ix.programIdIndex];
                       
-                      const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
-                      const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
-                      
-                      if (isCreateTpsl || isUpdateTpsl) {
-                        console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} instruction`);
+                      // Check if this is a Jupiter Perpetuals instruction
+                      if (programId.toString() === JUPITER_PERPETUALS_PROGRAM.programId.toString()) {
+                        // Get the instruction data
+                        const data = Buffer.from(ix.data);
                         
-                        // Parse TP/SL parameters from buffer
-                        const instructionDataBuffer = data.slice(8);
-                        let offset = 0;
+                        // Check for TP/SL instruction discriminators
+                        const discriminator = data.slice(0, 8);
                         
-                        let collateralUsdDelta, sizeUsdDelta, triggerPrice, triggerAboveThreshold, entirePosition, counter, requestTime;
+                        const isCreateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl) === 0;
+                        const isUpdateTpsl = Buffer.compare(discriminator, TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl) === 0;
                         
-                        if (isCreateTpsl) {
-                          // InstantCreateTpsl structure (7 fields)
-                          collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
+                        if (isCreateTpsl || isUpdateTpsl) {
+                          console.log(`Found ${isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl'} instruction`);
                           
-                          sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
+                          // Parse TP/SL parameters from buffer
+                          const instructionDataBuffer = data.slice(8);
+                          let offset = 0;
                           
-                          triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
+                          let collateralUsdDelta, sizeUsdDelta, triggerPrice, triggerAboveThreshold, entirePosition, counter, requestTime;
                           
-                          triggerAboveThreshold = instructionDataBuffer[offset] === 1;
-                          offset += 1;
-                          
-                          entirePosition = instructionDataBuffer[offset] === 1;
-                          offset += 1;
-                          
-                          // Pad to 8-byte boundary for counter
-                          offset = Math.ceil(offset / 8) * 8;
-                          
-                          counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
-                          
-                          requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                        } else {
-                          // InstantUpdateTpsl structure (3 fields only)
-                          // Set defaults for fields not in update
-                          collateralUsdDelta = new BN(0);
-                          counter = new BN(0);
-                          
-                          // Read the actual fields
-                          sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
-                          
-                          triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          offset += 8;
-                          
-                          requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
-                          
-                          // For update events, determine triggerAboveThreshold from trigger price analysis
-                          // This is a best-effort approach - could be improved with more context
-                          // triggerAboveThreshold not available in InstantUpdateTpslParams IDL - will be retrieved from original create event
-                          triggerAboveThreshold = false; // Placeholder
-                          
-                          // Set default for entirePosition - will be updated from original create event
-                          entirePosition = false;
-                        }
-
-                        tpslData = {
-                          instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
-                          params: {
-                            collateralUsdDelta,
-                            sizeUsdDelta,
-                            triggerPrice,
-                            triggerAboveThreshold,
-                            entirePosition,
-                            counter,
-                            requestTime
+                          if (isCreateTpsl) {
+                            // InstantCreateTpsl structure (7 fields)
+                            collateralUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            triggerAboveThreshold = instructionDataBuffer[offset] === 1;
+                            offset += 1;
+                            
+                            entirePosition = instructionDataBuffer[offset] === 1;
+                            offset += 1;
+                            
+                            // Pad to 8-byte boundary for counter
+                            offset = Math.ceil(offset / 8) * 8;
+                            
+                            counter = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                          } else {
+                            // InstantUpdateTpsl structure (3 fields only)
+                            // Set defaults for fields not in update
+                            collateralUsdDelta = new BN(0);
+                            counter = new BN(0);
+                            
+                            // Read the actual fields
+                            sizeUsdDelta = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            triggerPrice = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            offset += 8;
+                            
+                            requestTime = new BN(instructionDataBuffer.slice(offset, offset + 8), 'le');
+                            
+                            // For update events, determine triggerAboveThreshold from trigger price analysis
+                            // This is a best-effort approach - could be improved with more context
+                            // triggerAboveThreshold not available in InstantUpdateTpslParams IDL - will be retrieved from original create event
+                            triggerAboveThreshold = false; // Placeholder
+                            
+                            // Set default for entirePosition - will be updated from original create event
+                            entirePosition = false;
                           }
-                        };
 
-                        // Store original create event data for linking
-                        if (isCreateTpsl) {
-                          // For create events, we have the complete data including size percentage
-                          console.log(`Found instantCreateTpsl instruction with entirePosition: ${entirePosition}`);
-                        } else {
-                          // For update events, we only have the limited fields from the IDL
-                          console.log(`Found instantUpdateTpsl instruction - size percentage should come from original create event`);
+                          tpslData = {
+                            instructionName: isCreateTpsl ? 'instantCreateTpsl' : 'instantUpdateTpsl',
+                            params: {
+                              collateralUsdDelta,
+                              sizeUsdDelta,
+                              triggerPrice,
+                              triggerAboveThreshold,
+                              entirePosition,
+                              counter,
+                              requestTime
+                            }
+                          };
+
+                          // Store original create event data for linking
+                          if (isCreateTpsl) {
+                            // For create events, we have the complete data including size percentage
+                            console.log(`Found instantCreateTpsl instruction with entirePosition: ${entirePosition}`);
+                          } else {
+                            // For update events, we only have the limited fields from the IDL
+                            console.log(`Found instantUpdateTpsl instruction - size percentage should come from original create event`);
+                          }
+                          
+                          // Add the instruction data to the event data
+                          formattedEvent.data.tpslInstructionData = tpslData;
+                          
+                          // Add parsed fields to event data for easy access
+                          formattedEvent.data.tpslCollateralUsdDelta = `$${BNToUSDRepresentation(collateralUsdDelta, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslSizeUsdDelta = `$${BNToUSDRepresentation(sizeUsdDelta, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslTriggerPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
+                          formattedEvent.data.tpslTriggerAboveThreshold = triggerAboveThreshold;
+                          formattedEvent.data.tpslEntirePosition = entirePosition;
+                          formattedEvent.data.tpslCounter = counter.toString();
+                          formattedEvent.data.tpslRequestTime = requestTime.toNumber() !== 0 ? 
+                            new Date(requestTime.toNumber() * 1000).toISOString() : 
+                            null;
+                          
+                          break; // Exit the loop once we find the instruction
                         }
-                        
-                        // Add the instruction data to the event data
-                        formattedEvent.data.tpslInstructionData = tpslData;
-                        
-                        // Add parsed fields to event data for easy access
-                        formattedEvent.data.tpslCollateralUsdDelta = `$${BNToUSDRepresentation(collateralUsdDelta, USDC_DECIMALS)}`;
-                        formattedEvent.data.tpslSizeUsdDelta = `$${BNToUSDRepresentation(sizeUsdDelta, USDC_DECIMALS)}`;
-                        formattedEvent.data.tpslTriggerPrice = `$${BNToUSDRepresentation(triggerPrice, USDC_DECIMALS)}`;
-                        formattedEvent.data.tpslTriggerAboveThreshold = triggerAboveThreshold;
-                        formattedEvent.data.tpslEntirePosition = entirePosition;
-                        formattedEvent.data.tpslCounter = counter.toString();
-                        formattedEvent.data.tpslRequestTime = requestTime.toNumber() !== 0 ? 
-                          new Date(requestTime.toNumber() * 1000).toISOString() : 
-                          null;
-                        
-                        break; // Exit the loop once we find the instruction
                       }
                     }
                   }
+                } catch (error) {
+                  console.error("Error extracting TP/SL instruction data:", error);
                 }
-              } catch (error) {
-                console.error("Error extracting TP/SL instruction data:", error);
               }
+              
+              return eventWithTx;
+            } catch (error) {
+              console.log("Failed to decode instruction data");
+              return null;
             }
-            
-            return eventWithTx;
-          } catch (error) {
-            console.log("Failed to decode instruction data");
-            return null;
-          }
-        }).filter(Boolean);
-      });
-      
-      allEvents.push(...txEvents);
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`Error processing transaction: ${errorMessage}`);
+          }).filter(Boolean);
+        });
+        
+        allEvents.push(...txEvents);
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Error processing transaction: ${errorMessage}`);
+      }
     }
   }
   
-  console.log(`Found ${allEvents.length} total events`);
+  console.log(`\n=== SUMMARY ===`);
+  console.log(`Total events found across all PDAs: ${allEvents.length}`);
+  
+  // Sort all events chronologically before returning
+  allEvents.sort((a, b) => {
+    const aTime = a?.tx.blockTime ? new Date(a.tx.blockTime).getTime() : 0;
+    const bTime = b?.tx.blockTime ? new Date(b.tx.blockTime).getTime() : 0;
+    return aTime - bTime;
+  });
   
   // Filter to only return position events
   const filteredEvents = allEvents.filter(
@@ -449,7 +583,7 @@ export async function getPositionEvents(targetDateString?: string) {
       data?.event?.name === "FillLimitOrderEvent"  // Add FillLimitOrderEvent as a main event
   );
   
-  console.log(`Found ${filteredEvents.length} relevant position events`);
+  console.log(`Found ${filteredEvents.length} relevant position events across all PDAs`);
   
   return filteredEvents;
 }
@@ -1218,11 +1352,11 @@ function findOriginalCreateTpslEvent(events: EventWithTx[], updateEvent: any): a
 }
 
 /**
- * Get the complete trade history for a specific position PDA with optional date filtering
+ * Get the complete trade history for all position PDAs of a wallet with optional date filtering
  */
-export async function getPositionTradeHistory(targetDateString?: string): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
-  // Get all events for the position with date filtering
-  const events = await getPositionEvents(targetDateString);
+export async function getPositionTradeHistory(targetDateString?: string, walletAddress?: string): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
+  // Get all events for the wallet's position PDAs with date filtering
+  const events = await getPositionEvents(targetDateString, walletAddress);
   
   // Display raw events first
   console.log("\n======== RAW EVENTS ========");
@@ -1436,16 +1570,21 @@ function formatLimitOrderData(data: any): string {
 }
 
 /**
- * Example usage with date support
+ * Example usage with date support and wallet address
  */
-async function analyzeTradeHistory(targetDateString?: string) {
-  const { activeTrades, completedTrades } = await getPositionTradeHistory(targetDateString);
+async function analyzeTradeHistory(targetDateString?: string, walletAddress?: string) {
+  const { activeTrades, completedTrades } = await getPositionTradeHistory(targetDateString, walletAddress);
   
   console.log(`\n======== TRADE SUMMARY ========`);
   if (targetDateString) {
     console.log(`Date range: From now back to ${targetDateString}`);
   } else {
     console.log(`Date range: Last 30 days (default)`);
+  }
+  if (walletAddress) {
+    console.log(`Wallet: ${walletAddress}`);
+  } else {
+    console.log(`Wallet: CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1 (default)`);
   }
   console.log(`Active trades: ${activeTrades.length}`);
   console.log(`Completed trades: ${completedTrades.length}`);
@@ -2149,11 +2288,12 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
 }
 
 /**
- * Jupiter Perpetuals Trade History Analyzer with Date Range Support
+ * Jupiter Perpetuals Trade History Analyzer with Date Range Support and Multi-PDA Analysis
  * 
- * To analyze trades within a specific date range:
+ * To analyze trades across all position PDAs for a wallet:
  * 1. Update the TARGET_DATE variable below with your desired start date in DD.MM.YYYY format
  * 2. Set TARGET_DATE to undefined to use default (30 days ago)
+ * 3. Update the WALLET_ADDRESS to analyze a different wallet's trades
  * 
  * Examples:
  * - "01.01.2025" - Fetch all transactions from now back to January 1st, 2025
@@ -2163,10 +2303,11 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
 
 // ====== CONFIGURATION ======
 const TARGET_DATE = "13.04.2025"; // Change this date or set to undefined for default (30 days)
+const WALLET_ADDRESS = "CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1"; // Wallet to analyze
 // ============================
 
-// Run the example with date support
-analyzeTradeHistory(TARGET_DATE).then(() => {
+// Run the example with date support and wallet address
+analyzeTradeHistory(TARGET_DATE, WALLET_ADDRESS).then(() => {
   console.log("Trade analysis complete");
 }).catch(err => {
   console.error("Error analyzing trades:", err);
