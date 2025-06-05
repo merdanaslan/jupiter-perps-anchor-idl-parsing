@@ -7,7 +7,6 @@ import {
 } from "../constants";
 import { PublicKey } from "@solana/web3.js";
 import { Perpetuals } from "../idl/jupiter-perpetuals-idl";
-import { inspect } from 'util';
 import { BN } from "@coral-xyz/anchor";
 import { BNToUSDRepresentation } from "../utils";
 
@@ -44,7 +43,6 @@ interface ITrade {
   sizeUsd: number;
   finalSize?: number; // Size before closing (for completed trades)
   maxSize?: number;   // Maximum size the position reached
-  notionalSize?: number; // Amount of the asset (not USD)
   collateralUsd: number;
   leverage: number;
   pnl?: number;
@@ -69,9 +67,6 @@ export const LIMIT_ORDER_INSTRUCTION_DISCRIMINATORS = {
   instantUpdateLimitOrder: Buffer.from([])  // Will be populated from debug if found
 };
 
-// Remove the debug logging
-// console.log("Create TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantCreateTpsl));
-// console.log("Update TPSL discriminator:", Array.from(TPSL_INSTRUCTION_DISCRIMINATORS.instantUpdateTpsl));
 
 // Helper function to format event data to make it human-readable
 function formatEventData(event: any): any {
@@ -1481,7 +1476,6 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
   const roi = trade.roi ? `${trade.roi.toFixed(2)}%` : "N/A";
   
   console.log(`\nTrade #${index + 1} (ID: ${trade.id}):`);
-  
   // Debug - Check if InstantCreateTpslEvent is in the events array
   
   // Replace Position field with Symbol
