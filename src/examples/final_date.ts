@@ -1254,11 +1254,13 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
           // For update events, try to find the original create event to get correct values
           let actualEntirePosition = eventData.tpslEntirePosition;
           let actualSizePercentage = "Size from original create event";
+          let actualTriggerAboveThreshold = eventData.tpslTriggerAboveThreshold;
           
           if (tpslInstructionData.instructionName === 'instantUpdateTpsl') {
             const originalCreateData = findOriginalCreateTpslEvent(events, evt);
             if (originalCreateData && originalCreateData.params) {
               actualEntirePosition = originalCreateData.params.entirePosition;
+              actualTriggerAboveThreshold = originalCreateData.params.triggerAboveThreshold;
               actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
             }
           } else if (tpslInstructionData.instructionName === 'instantCreateTpsl') {
@@ -1273,16 +1275,16 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
           
           console.log(`  Size USD Delta: ${eventData.tpslSizeUsdDelta || '$0.00'}`);
           console.log(`  Trigger Price: ${eventData.tpslTriggerPrice || 'N/A'}`);
-          console.log(`  Trigger Above Threshold: ${eventData.tpslTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
+          console.log(`  Trigger Above Threshold: ${actualTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
           console.log(`  Entire Position: ${actualEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
           
           if (eventData.tpslCounter && eventData.tpslCounter !== '0') console.log(`  Counter: ${eventData.tpslCounter}`);
           if (eventData.tpslRequestTime && eventData.tpslRequestTime !== '1970-01-01T00:00:00.000Z') console.log(`  Request Time: ${eventData.tpslRequestTime}`);
           
           // Add the interpreted TP/SL values for clarity
-          console.log(`  Order Type: ${eventData.tpslTriggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
+          console.log(`  Order Type: ${actualTriggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
           
-          if (eventData.tpslTriggerAboveThreshold) {
+          if (actualTriggerAboveThreshold) {
             console.log(`  Take Profit Price: ${eventData.tpslTriggerPrice}`);
             console.log(`  Take Profit Size: ${actualSizePercentage}`);
           } else {
@@ -1302,11 +1304,13 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               // For update events, try to find the original create event to get correct values
               let actualEntirePosition = tpslData.params.entirePosition;
               let actualSizePercentage = "Size from original create event";
+              let actualTriggerAboveThreshold = tpslData.params.triggerAboveThreshold;
               
               if (tpslData.instructionName === 'instantUpdateTpsl') {
                 const originalCreateData = findOriginalCreateTpslEvent(events, evt);
                 if (originalCreateData && originalCreateData.params) {
                   actualEntirePosition = originalCreateData.params.entirePosition;
+                  actualTriggerAboveThreshold = originalCreateData.params.triggerAboveThreshold;
                   actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
                 }
               } else if (tpslData.instructionName === 'instantCreateTpsl') {
@@ -1321,7 +1325,7 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               
               console.log(`  Size USD Delta: $${BNToUSDRepresentation(tpslData.params.sizeUsdDelta, USDC_DECIMALS)}`);
               console.log(`  Trigger Price: $${BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS)}`);
-              console.log(`  Trigger Above Threshold: ${tpslData.params.triggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
+              console.log(`  Trigger Above Threshold: ${actualTriggerAboveThreshold ? 'Yes (Take Profit)' : 'No (Stop Loss)'}`);
               console.log(`  Entire Position: ${actualEntirePosition ? 'Yes (100%)' : 'No (Partial)'}`);
               
               if (tpslData.params.counter && tpslData.params.counter.toString() !== '0') 
@@ -1333,9 +1337,9 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
               }
               
               // Show interpreted values
-              console.log(`  Order Type: ${tpslData.params.triggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
+              console.log(`  Order Type: ${actualTriggerAboveThreshold ? 'Take Profit' : 'Stop Loss'}`);
               
-              if (tpslData.params.triggerAboveThreshold) {
+              if (actualTriggerAboveThreshold) {
                 const tpPrice = BNToUSDRepresentation(tpslData.params.triggerPrice, USDC_DECIMALS);
                 console.log(`  Take Profit Price: $${tpPrice}`);
                 console.log(`  Take Profit Size: ${actualSizePercentage}`);
