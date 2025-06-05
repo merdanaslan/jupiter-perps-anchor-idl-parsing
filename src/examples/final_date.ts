@@ -1259,11 +1259,11 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
             const originalCreateData = findOriginalCreateTpslEvent(events, evt);
             if (originalCreateData && originalCreateData.params) {
               actualEntirePosition = originalCreateData.params.entirePosition;
-              actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+              actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
             }
           } else if (tpslInstructionData.instructionName === 'instantCreateTpsl') {
             // For create events, use the values directly from the event
-            actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+            actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
           }
           
           // Only show collateral delta for create events
@@ -1307,11 +1307,11 @@ export async function getPositionTradeHistory(targetDateString?: string): Promis
                 const originalCreateData = findOriginalCreateTpslEvent(events, evt);
                 if (originalCreateData && originalCreateData.params) {
                   actualEntirePosition = originalCreateData.params.entirePosition;
-                  actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+                  actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
                 }
               } else if (tpslData.instructionName === 'instantCreateTpsl') {
                 // For create events, use the values directly from the event
-                actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+                actualSizePercentage = actualEntirePosition ? '100%' : 'Partial position';
               }
               
               // Only show collateral delta for create events
@@ -1710,17 +1710,31 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         
         // For update events, try to find the original create event to get correct values
         let actualEntirePosition = data.tpslEntirePosition;
-        let actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+        let actualSizePercentage = calculateTpslSizePercentage(
+          actualEntirePosition,
+          data.tpslSizeUsdDelta || '$0.00',
+          trade.sizeUsd
+        );
         
         if (tpslData.instructionName === 'instantUpdateTpsl') {
           const originalCreateData = findOriginalCreateTpslEvent(trade.events, tpslEvent);
           if (originalCreateData && originalCreateData.params) {
             actualEntirePosition = originalCreateData.params.entirePosition;
-            actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+            // For UPDATE events, we need to get the size from the original CREATE event
+            const originalSizeUsdDelta = originalCreateData.data?.tpslSizeUsdDelta || '$0.00';
+            actualSizePercentage = calculateTpslSizePercentage(
+              actualEntirePosition,
+              originalSizeUsdDelta,
+              trade.sizeUsd
+            );
           }
         } else if (tpslData.instructionName === 'instantCreateTpsl') {
           // For create events, use the values directly from the event
-          actualSizePercentage = actualEntirePosition ? '100%' : '50%';
+          actualSizePercentage = calculateTpslSizePercentage(
+            actualEntirePosition,
+            data.tpslSizeUsdDelta || '$0.00',
+            trade.sizeUsd
+          );
         }
         
         console.log(`TP/SL Orders: ${isTP ? 'Take Profit' : ''}${isTP && isSL ? ' and ' : ''}${isSL ? 'Stop Loss' : ''}`);
@@ -1892,14 +1906,31 @@ async function printDetailedTradeInfo(trade: ITrade, index: number) {
         
         // For update events, try to find the original create event to get correct values
         let actualEntirePosition = eventData.tpslEntirePosition;
-        let actualSizePercentage = actualEntirePosition ? "100%" : "50%";
+        let actualSizePercentage = calculateTpslSizePercentage(
+          actualEntirePosition,
+          eventData.tpslSizeUsdDelta || '$0.00',
+          trade.sizeUsd
+        );
         
         if (eventType === 'InstantUpdateTpslEvent') {
           const originalCreateData = findOriginalCreateTpslEvent(trade.events, evt);
           if (originalCreateData && originalCreateData.params) {
             actualEntirePosition = originalCreateData.params.entirePosition;
-            actualSizePercentage = actualEntirePosition ? "100%" : "50%";
+            // For UPDATE events, we need to get the size from the original CREATE event
+            const originalSizeUsdDelta = originalCreateData.data?.tpslSizeUsdDelta || '$0.00';
+            actualSizePercentage = calculateTpslSizePercentage(
+              actualEntirePosition,
+              originalSizeUsdDelta,
+              trade.sizeUsd
+            );
           }
+        } else if (eventType === 'InstantCreateTpslEvent') {
+          // For create events, use the values directly from the event
+          actualSizePercentage = calculateTpslSizePercentage(
+            actualEntirePosition,
+            eventData.tpslSizeUsdDelta || '$0.00',
+            trade.sizeUsd
+          );
         }
         
         // Show size percentage
@@ -2131,3 +2162,24 @@ analyzeTradeHistory(TARGET_DATE).then(() => {
 }).catch(err => {
   console.error("Error analyzing trades:", err);
 });
+
+// Helper function to calculate TP/SL size percentage
+function calculateTpslSizePercentage(
+  entirePosition: boolean,
+  sizeUsdDelta: string,
+  positionSizeUsd: number
+): string {
+  if (entirePosition) {
+    return "100%";
+  }
+  
+  // For partial positions, calculate actual percentage
+  const deltaUsd = parseUsdValue(sizeUsdDelta);
+  if (deltaUsd > 0 && positionSizeUsd > 0) {
+    const percentage = (deltaUsd / positionSizeUsd) * 100;
+    return `${percentage.toFixed(1)}%`;
+  }
+  
+  // Fallback if we can't calculate
+  return "Partial position";
+}
