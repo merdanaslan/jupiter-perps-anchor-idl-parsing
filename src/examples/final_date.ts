@@ -282,10 +282,7 @@ export async function getPositionEvents(targetDateString?: string, walletAddress
         options.before = beforeSignature;
       }
       
-      const confirmedSignatureInfos = await RPC_CONNECTION.getSignaturesForAddress(
-        currentPda.positionPda,
-        options
-      );
+      const confirmedSignatureInfos = await getSignaturesWithRetry(currentPda.positionPda, options);
 
       if (!confirmedSignatureInfos || confirmedSignatureInfos.length === 0) {
         console.log(`No more transactions found for ${currentPda.description}`);
@@ -294,6 +291,12 @@ export async function getPositionEvents(targetDateString?: string, walletAddress
       
       totalFetched += confirmedSignatureInfos.length;
       console.log(`Fetched ${confirmedSignatureInfos.length} signatures (total: ${totalFetched} for this PDA)`);
+      
+      // Add delay between signature fetching batches to avoid rate limits
+      if (confirmedSignatureInfos.length === 100) {
+        console.log(`Waiting 5 seconds before fetching next batch of signatures...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
       
       // Check if we've reached our target date
       for (const sigInfo of confirmedSignatureInfos) {
@@ -619,6 +622,40 @@ async function fetchTransactionWithRetry(signature: string, maxRetries = 5): Pro
         delay = Math.min(delay * 2 * jitter, 10000); // Cap at 10 seconds
         
         console.log(`Rate limited. Retry ${retries}/${maxRetries} after ${Math.round(delay)}ms delay...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        // For non-rate-limit errors, just throw
+        throw error;
+      }
+    }
+  }
+}
+
+// Add retry wrapper for getSignaturesForAddress to handle rate limits during signature fetching
+async function getSignaturesWithRetry(positionPda: any, options: any, maxRetries = 5): Promise<any> {
+  let retries = 0;
+  let delay = 500; // Start with 500ms delay
+  
+  while (retries < maxRetries) {
+    try {
+      return await RPC_CONNECTION.getSignaturesForAddress(positionPda, options);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if it's a rate limit error
+      if (errorMessage.includes("429") || errorMessage.includes("Too Many Requests")) {
+        retries++;
+        
+        if (retries >= maxRetries) {
+          console.log(`Maximum retries (${maxRetries}) reached for signature fetching. Giving up.`);
+          throw error;
+        }
+        
+        // Exponential backoff with jitter
+        const jitter = Math.random() * 0.3 + 0.85; // Random between 0.85 and 1.15
+        delay = Math.min(delay * 2 * jitter, 15000); // Cap at 15 seconds for signature fetching
+        
+        console.log(`Signature fetch rate limited. Retry ${retries}/${maxRetries} after ${Math.round(delay)}ms delay...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         // For non-rate-limit errors, just throw
@@ -2302,8 +2339,8 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
  */
 
 // ====== CONFIGURATION ======
-const TARGET_DATE = "13.04.2025"; // Change this date or set to undefined for default (30 days)
-const WALLET_ADDRESS = "CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1"; // Wallet to analyze
+const TARGET_DATE = "09.03.2025"; // Change this date or set to undefined for default (30 days)
+const WALLET_ADDRESS = "BNDvcP8rVZrNn7xDBHN8jxUh9RKpMB4TFMc42ia3wZvt"; // Wallet to analyze
 // ============================
 
 // Run the example with date support and wallet address
