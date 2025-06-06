@@ -228,20 +228,20 @@ function parseDate(dateString: string): Date {
 }
 
 // Helper function to check if we should continue fetching based on date range
-function shouldContinueFetching(blockTime: number | null, targetDate: Date): boolean {
+function shouldContinueFetching(blockTime: number | null, fromDate: Date): boolean {
   if (!blockTime) return true; // If no blockTime, continue fetching
   const txDate = new Date(blockTime * 1000);
-  return txDate >= targetDate;
+  return txDate >= fromDate; // Continue while transaction date is newer than or equal to FROM_DATE
 }
 
 // Helper function to check if transaction is within date range
 function isWithinDateRange(blockTime: number | null, fromDate: Date, toDate: Date): boolean {
   if (!blockTime) return false; // Skip transactions without blockTime
   const txDate = new Date(blockTime * 1000);
-  return txDate <= fromDate && txDate >= toDate;
+  return txDate >= fromDate && txDate <= toDate; // Transaction must be between FROM_DATE and TO_DATE
 }
 
-export async function getPositionEvents(targetDateString?: string, walletAddress?: string, fromDateString?: string) {
+export async function getPositionEvents(fromDateString?: string, walletAddress?: string, toDateString?: string) {
   // Default wallet address if not provided
   const defaultWalletAddress = "CZKPYBkGXg1G6W8EXLxHDLRwsYtMz8TBk1qfPgCMzxG1";
   const wallet = walletAddress || defaultWalletAddress;
@@ -256,22 +256,22 @@ export async function getPositionEvents(targetDateString?: string, walletAddress
     console.log(`     PDA: ${pda.positionPda.toBase58()}`);
   });
   
-  // Parse target date (default to 30 days ago if not provided)
-  const targetDate = targetDateString 
-    ? parseDate(targetDateString)
-    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-  
-  // Parse from date (default to "now" if not provided)
+  // Parse from date (default to 30 days ago if not provided) - this is the starting point (older date)
   const fromDate = fromDateString 
     ? parseDate(fromDateString)
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+  
+  // Parse to date (default to "now" if not provided) - this is the ending point (newer date)
+  const toDate = toDateString 
+    ? parseDate(toDateString)
     : new Date(); // Current moment
   
   // Validate date range
-  if (fromDate <= targetDate) {
-    throw new Error(`FROM_DATE (${fromDate.toLocaleDateString('en-GB')}) must be newer than TO_DATE (${targetDate.toLocaleDateString('en-GB')})`);
+  if (fromDate >= toDate) {
+    throw new Error(`FROM_DATE (${fromDate.toLocaleDateString('en-GB')}) must be older than TO_DATE (${toDate.toLocaleDateString('en-GB')})`);
   }
   
-  console.log(`\nGetting signatures from ${fromDate.toLocaleDateString('en-GB')} back to ${targetDate.toLocaleDateString('en-GB')}...`);
+  console.log(`\nGetting signatures from ${fromDate.toLocaleDateString('en-GB')} to ${toDate.toLocaleDateString('en-GB')}...`);
   
   // Collect all events from all PDAs
   const allEvents: any[] = [];
@@ -283,8 +283,8 @@ export async function getPositionEvents(targetDateString?: string, walletAddress
     
     // Add delay between PDA processing to avoid rate limits
     if (pdaIndex > 0) {
-      console.log(`Waiting 10 seconds before processing next PDA to avoid rate limits...`);
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      console.log(`Waiting 9 seconds before processing next PDA to avoid rate limits...`);
+      await new Promise(resolve => setTimeout(resolve, 9000));
     }
     
     const allSignatures: any[] = [];
@@ -320,14 +320,14 @@ export async function getPositionEvents(targetDateString?: string, walletAddress
         const blockTime = sigInfo.blockTime ?? null;
         
         // Stop fetching if we've gone past the target date
-        if (!shouldContinueFetching(blockTime, targetDate)) {
-          console.log(`Reached target date ${targetDate.toLocaleDateString('en-GB')} for ${currentPda.description}, stopping fetch`);
+        if (!shouldContinueFetching(blockTime, fromDate)) {
+          console.log(`Reached start date ${fromDate.toLocaleDateString('en-GB')} for ${currentPda.description}, stopping fetch`);
           hasMoreTransactions = false;
           break;
         }
         
         // Only include transactions within the specified date range
-        if (isWithinDateRange(blockTime, fromDate, targetDate)) {
+        if (isWithinDateRange(blockTime, fromDate, toDate)) {
           allSignatures.push(sigInfo);
         }
       }
@@ -1414,9 +1414,9 @@ function findOriginalCreateTpslEvent(events: EventWithTx[], updateEvent: any): a
 /**
  * Get the complete trade history for all position PDAs of a wallet with optional date filtering
  */
-export async function getPositionTradeHistory(targetDateString?: string, walletAddress?: string, fromDateString?: string): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
+export async function getPositionTradeHistory(fromDateString?: string, walletAddress?: string, toDateString?: string): Promise<{ activeTrades: ITrade[]; completedTrades: ITrade[] }> {
   // Get all events for the wallet's position PDAs with date filtering
-  const events = await getPositionEvents(targetDateString, walletAddress, fromDateString);
+  const events = await getPositionEvents(fromDateString, walletAddress, toDateString);
   
   // Display raw events first
   console.log("\n======== RAW EVENTS ========");
@@ -1632,14 +1632,14 @@ function formatLimitOrderData(data: any): string {
 /**
  * Example usage with date support and wallet address
  */
-async function analyzeTradeHistory(targetDateString?: string, walletAddress?: string, fromDateString?: string) {
-  const { activeTrades, completedTrades } = await getPositionTradeHistory(targetDateString, walletAddress, fromDateString);
+async function analyzeTradeHistory(fromDateString?: string, walletAddress?: string, toDateString?: string) {
+  const { activeTrades, completedTrades } = await getPositionTradeHistory(fromDateString, walletAddress, toDateString);
   
   console.log(`\n======== TRADE SUMMARY ========`);
-  if (targetDateString && fromDateString) {
-    console.log(`Date range: From ${fromDateString} to ${targetDateString}`);
-  } else if (targetDateString) {
-    console.log(`Date range: From now back to ${targetDateString}`);
+  if (fromDateString && toDateString) {
+    console.log(`Date range: From ${fromDateString} to ${toDateString}`);
+  } else if (fromDateString) {
+    console.log(`Date range: From ${fromDateString} to now`);
   } else {
     console.log(`Date range: Last 30 days (default)`);
   }
@@ -2353,28 +2353,28 @@ function getAssetNameFromCustody(custodyPubkey: string | undefined): string {
  * Jupiter Perpetuals Trade History Analyzer with Date Range Support and Multi-PDA Analysis
  * 
  * To analyze trades across all position PDAs for a wallet within a specific date range:
- * 1. Update the TO_DATE variable with your desired end date (how far back to go) in DD.MM.YYYY format
- * 2. Update the FROM_DATE variable with your desired start date (where to begin from) in DD.MM.YYYY format
- * 3. Set FROM_DATE to undefined to start from "now" (current moment)
- * 4. Set TO_DATE to undefined to use default (30 days ago from FROM_DATE)
+ * 1. Update the FROM_DATE variable with your desired start date (older date, where analysis begins) in DD.MM.YYYY format
+ * 2. Update the TO_DATE variable with your desired end date (newer date, where analysis ends) in DD.MM.YYYY format
+ * 3. Set TO_DATE to undefined to end at "now" (current moment)
+ * 4. Set FROM_DATE to undefined to use default (30 days ago from TO_DATE)
  * 5. Update the WALLET_ADDRESS to analyze a different wallet's trades
  * 
  * Examples:
- * - FROM_DATE = "20.04.2025", TO_DATE = "15.04.2025" - Fetch transactions between April 20th and April 15th, 2025
- * - FROM_DATE = undefined, TO_DATE = "01.04.2025" - Fetch from now back to April 1st, 2025
- * - FROM_DATE = undefined, TO_DATE = undefined - Fetch transactions from the last 30 days (default)
+ * - FROM_DATE = "13.04.2025", TO_DATE = "15.04.2025" - Analyze transactions from April 13th to April 15th, 2025
+ * - FROM_DATE = "01.04.2025", TO_DATE = undefined - Analyze from April 1st to now
+ * - FROM_DATE = undefined, TO_DATE = undefined - Analyze transactions from the last 30 days (default)
  * 
- * Note: FROM_DATE must be newer (later) than TO_DATE since we're going backwards in time
+ * Note: FROM_DATE must be older (earlier) than TO_DATE for a valid chronological range
  */
 
 // ====== CONFIGURATION ======
-const TO_DATE = "13.04.2025"; // End date - how far back to go (older date)
-const FROM_DATE = "15.04.2025"; // Start date - where to begin from (newer date), set to undefined to start from "now"
+const FROM_DATE = "09.04.2025"; // Start date - where to begin analysis (older date)
+const TO_DATE = "06.06.2025"; // End date - where to finish analysis (newer date), set to undefined for "now"
 const WALLET_ADDRESS = "BNDvcP8rVZrNn7xDBHN8jxUh9RKpMB4TFMc42ia3wZvt"; // Wallet to analyze
 // ============================
 
 // Run the example with date support and wallet address
-analyzeTradeHistory(TO_DATE, WALLET_ADDRESS, FROM_DATE).then(() => {
+analyzeTradeHistory(FROM_DATE, WALLET_ADDRESS, TO_DATE).then(() => {
   console.log("Trade analysis complete");
 }).catch(err => {
   console.error("Error analyzing trades:", err);
